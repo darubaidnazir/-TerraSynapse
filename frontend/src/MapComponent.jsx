@@ -13,6 +13,8 @@ export default function MapComponent({center, zoom, onPolygonSubmit}) {
   const [error, setError] = useState(null);
   const [activeFeature, setActiveFeature] = useState(null);
 
+  const [cropType, setCropType] = useState("default");
+
   useEffect(() => {
     if (map.current) return;
     
@@ -22,30 +24,28 @@ export default function MapComponent({center, zoom, onPolygonSubmit}) {
         style: {
           "version": 8,
           "sources": {
-            "osm": {
+            "satellite": {
               "type": "raster",
               "tiles": [
-                "https://a.tile.openstreetmap.org/{z}/{x}/{y}.png",
-                "https://b.tile.openstreetmap.org/{z}/{x}/{y}.png",
-                "https://c.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                "https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}"
               ],
               "tileSize": 256,
-              "attribution": "&copy; OpenStreetMap contributors"
+              "attribution": "Map data &copy; Google"
             }
           },
           "layers": [
             {
-              "id": "osm",
+              "id": "satellite",
               "type": "raster",
-              "source": "osm",
+              "source": "satellite",
               "minzoom": 0,
-              "maxzoom": 19
+              "maxzoom": 22
             }
           ]
         },
         center: center,
         zoom: zoom,
-        maxZoom: 19
+        maxZoom: 21
       });
 
       draw.current = new MapboxDraw({
@@ -99,23 +99,35 @@ export default function MapComponent({center, zoom, onPolygonSubmit}) {
 
   const handleSubmit = () => {
     if (activeFeature && !error) {
-      onPolygonSubmit(activeFeature);
+      onPolygonSubmit(activeFeature, cropType);
     }
   };
 
   return (
     <div className="w-full h-full absolute inset-0">
       <div ref={mapContainer} className="w-full h-full" />
-      <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-10">
-        <div className="bg-white p-4 rounded shadow-lg flex flex-col items-center">
-          <div className="text-red-500 mb-2">{error}</div>
-          <button 
-            onClick={handleSubmit}
-            disabled={!activeFeature || error}
-            className={`${!activeFeature || error ? "bg-gray-400 cursor-not-allowed" : "bg-green-600 hover:bg-green-700"} text-white px-4 py-2 rounded font-bold`}
-          >
-            Save Field
-          </button>
+      <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 z-10 w-80">
+        <div className="bg-white/90 backdrop-blur-md p-4 rounded-xl shadow-xl border border-gray-100 flex flex-col items-center gap-3 w-full">
+          <div className="flex items-center gap-2 w-full">
+            <select 
+              value={cropType} 
+              onChange={e => setCropType(e.target.value)}
+              className="bg-white border border-gray-200 text-gray-800 text-sm font-medium rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 block w-full p-2.5 outline-none transition-all shadow-sm cursor-pointer"
+            >
+              <option value="default">Generic Crop</option>
+              <option value="Wheat">Wheat</option>
+              <option value="Corn">Corn</option>
+            </select>
+            
+            <button 
+              onClick={handleSubmit}
+              disabled={!activeFeature || error}
+              className={`${!activeFeature || error ? "bg-gray-300 text-gray-500 cursor-not-allowed" : "bg-green-600 hover:bg-green-700 text-white shadow-md active:scale-95"} px-5 py-2.5 rounded-lg font-bold text-sm transition-all whitespace-nowrap`}
+            >
+              Save Field
+            </button>
+          </div>
+          {error && <div className="text-red-500 text-xs font-bold w-full text-center bg-red-50 py-1 rounded">{error}</div>}
         </div>
       </div>
     </div>

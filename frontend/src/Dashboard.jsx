@@ -94,6 +94,23 @@ export default function Dashboard({ field, result, onReset }) {
                   <p className="text-2xl font-semibold text-gray-900">
                     {data.mean.toFixed(3)} <span className="text-sm text-gray-500 font-normal">{data.unit}</span>
                   </p>
+                  
+                  {/* Data Source & Confidence */}
+                  {data.source && (
+                    <div className="mt-3 flex items-center justify-between text-[10px] font-semibold tracking-wide uppercase">
+                      <span className="text-gray-400">Src: {data.source}</span>
+                      {data.confidence && (
+                        <span className={`px-1.5 py-0.5 rounded ${
+                          data.confidence === 'High' ? 'bg-green-50 text-green-600' :
+                          data.confidence === 'Moderate' ? 'bg-yellow-50 text-yellow-600' :
+                          'bg-gray-100 text-gray-500'
+                        }`}>
+                          {data.confidence}
+                        </span>
+                      )}
+                    </div>
+                  )}
+
                   {data.needs_calibration && (
                     <p className="text-xs text-red-500 mt-2">* Default thresholds used</p>
                   )}

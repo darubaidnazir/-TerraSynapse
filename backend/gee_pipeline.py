@@ -90,17 +90,17 @@ def extract_indices(wkt_geometry: str):
         "acquisition_date": acq_date,
         "cloud_cover_pct": cloud_cover,
         "indices": {
-            "ndvi": {"mean": stats.get('ndvi_mean'), "min": stats.get('ndvi_min'), "max": stats.get('ndvi_max'), "unit": "index"},
-            "savi": {"mean": stats.get('savi_mean'), "min": stats.get('savi_min'), "max": stats.get('savi_max'), "unit": "index"},
-            "evi":  {"mean": stats.get('evi_mean'), "min": stats.get('evi_min'), "max": stats.get('evi_max'), "unit": "index"},
-            "ndmi": {"mean": stats.get('ndmi_mean'), "min": stats.get('ndmi_min'), "max": stats.get('ndmi_max'), "unit": "index"},
-            "ndwi": {"mean": stats.get('ndwi_mean'), "min": stats.get('ndwi_min'), "max": stats.get('ndwi_max'), "unit": "index"},
-            "lst":  {"mean": stats.get('lst_mean'), "unit": "celsius"},
-            "elevation": {"mean": stats.get('elevation_mean'), "unit": "m"},
-            "slope": {"mean": stats.get('slope_mean'), "unit": "degrees"},
-            "organic_carbon": {"mean": stats.get('organic_carbon_mean'), "unit": "dg/kg", "source": "SoilGrids_modeled"},
-            "ph": {"mean": stats.get('ph_mean'), "unit": "ph*10", "source": "SoilGrids_modeled"},
-            "cec": {"mean": stats.get('cec_mean'), "unit": "mmol(c)/kg", "source": "SoilGrids_modeled"},
-            "n_proxy": {"mean": stats.get('n_proxy_mean'), "unit": "cg/kg", "source": "SoilGrids_modeled"}
+            "ndvi": {"mean": stats.get('ndvi_mean'), "min": stats.get('ndvi_min'), "max": stats.get('ndvi_max'), "unit": "index", "source": "Sentinel-2 (10m)", "confidence": "High"},
+            "savi": {"mean": stats.get('savi_mean'), "min": stats.get('savi_min'), "max": stats.get('savi_max'), "unit": "index", "source": "Sentinel-2 (10m)", "confidence": "High"},
+            "evi":  {"mean": stats.get('evi_mean'), "min": stats.get('evi_min'), "max": stats.get('evi_max'), "unit": "index", "source": "Sentinel-2 (10m)", "confidence": "High"},
+            "ndmi": {"mean": stats.get('ndmi_mean'), "min": stats.get('ndmi_min'), "max": stats.get('ndmi_max'), "unit": "index", "source": "Sentinel-2 (10m)", "confidence": "High"},
+            "ndwi": {"mean": stats.get('ndwi_mean'), "min": stats.get('ndwi_min'), "max": stats.get('ndwi_max'), "unit": "index", "source": "Sentinel-2 (10m)", "confidence": "High"},
+            "lst":  {"mean": stats.get('lst_mean'), "unit": "celsius", "source": "MODIS (1km)", "confidence": "Moderate"},
+            "elevation": {"mean": stats.get('elevation_mean'), "unit": "m", "source": "SRTM (30m)", "confidence": "High"},
+            "slope": {"mean": stats.get('slope_mean'), "unit": "degrees", "source": "SRTM (30m)", "confidence": "High"},
+            "organic_carbon": {"mean": stats.get('organic_carbon_mean'), "unit": "dg/kg", "source": "SoilGrids (250m)", "confidence": "Estimated"},
+            "ph": {"mean": stats.get('ph_mean'), "unit": "ph*10", "source": "SoilGrids (250m)", "confidence": "Estimated"},
+            "cec": {"mean": stats.get('cec_mean'), "unit": "mmol(c)/kg", "source": "SoilGrids (250m)", "confidence": "Estimated"},
+            "n_proxy": {"mean": stats.get('n_proxy_mean'), "unit": "cg/kg", "source": "SoilGrids (250m)", "confidence": "Estimated"}
         }
     }

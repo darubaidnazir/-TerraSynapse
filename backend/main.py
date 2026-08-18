@@ -39,7 +39,8 @@ def create_field(field_in: FieldCreate, db: Session = Depends(get_db)):
         name=field_in.name,
         owner_id=field_in.owner_id,
         geometry=f"SRID=4326;{geo_info['wkt']}",
-        area_ha=geo_info["area_ha"]
+        area_ha=geo_info["area_ha"],
+        crop_type=field_in.crop_type
     )
     db.add(db_field)
     db.commit()
@@ -52,7 +53,7 @@ def create_field(field_in: FieldCreate, db: Session = Depends(get_db)):
     }
 
 @app.post("/api/fields/upload", response_model=FieldResponse)
-async def upload_field(file: UploadFile = File(...), name: str = Form(None), owner_id: str = Form(None), db: Session = Depends(get_db)):
+async def upload_field(file: UploadFile = File(...), name: str = Form(None), owner_id: str = Form(None), crop_type: str = Form("default"), db: Session = Depends(get_db)):
     if not file.filename.endswith(".zip"):
         raise HTTPException(status_code=400, detail="Only .zip shapefiles are supported.")
         
@@ -90,7 +91,8 @@ async def upload_field(file: UploadFile = File(...), name: str = Form(None), own
         name=name,
         owner_id=owner_id,
         geometry=f"SRID=4326;{geo_info['wkt']}",
-        area_ha=geo_info["area_ha"]
+        area_ha=geo_info["area_ha"],
+        crop_type=crop_type
     )
     db.add(db_field)
     db.commit()

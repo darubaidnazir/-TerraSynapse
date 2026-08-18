@@ -19,14 +19,15 @@ function App() {
     setZoom(14);
   };
 
-  const handlePolygonSubmit = async (feature) => {
+  const handlePolygonSubmit = async (feature, cropType = "default") => {
     try {
       setLoading(true);
       setStatusMsg("Saving field...");
       
       const res = await axios.post("http://localhost:8000/api/fields", {
         name: "My Field",
-        geometry: feature.geometry
+        geometry: feature.geometry,
+        crop_type: cropType
       });
       
       const fieldData = res.data;

@@ -4,11 +4,26 @@ import models
 def seed():
     db = SessionLocal()
     defaults = [
+        # Default
         {"crop_type": "default", "index_name": "ndvi", "poor_max": 0.2, "moderate_max": 0.5, "weight": 0.4},
         {"crop_type": "default", "index_name": "savi", "poor_max": 0.2, "moderate_max": 0.4, "weight": 0.2},
         {"crop_type": "default", "index_name": "evi", "poor_max": 0.2, "moderate_max": 0.4, "weight": 0.2},
         {"crop_type": "default", "index_name": "ndmi", "poor_max": 0.1, "moderate_max": 0.3, "weight": 0.1},
         {"crop_type": "default", "index_name": "ndwi", "poor_max": 0.1, "moderate_max": 0.3, "weight": 0.1},
+        
+        # Wheat
+        {"crop_type": "Wheat", "index_name": "ndvi", "poor_max": 0.25, "moderate_max": 0.6, "weight": 0.4},
+        {"crop_type": "Wheat", "index_name": "savi", "poor_max": 0.25, "moderate_max": 0.5, "weight": 0.2},
+        {"crop_type": "Wheat", "index_name": "evi", "poor_max": 0.25, "moderate_max": 0.5, "weight": 0.2},
+        {"crop_type": "Wheat", "index_name": "ndmi", "poor_max": 0.15, "moderate_max": 0.35, "weight": 0.1},
+        {"crop_type": "Wheat", "index_name": "ndwi", "poor_max": 0.15, "moderate_max": 0.35, "weight": 0.1},
+
+        # Corn
+        {"crop_type": "Corn", "index_name": "ndvi", "poor_max": 0.3, "moderate_max": 0.7, "weight": 0.4},
+        {"crop_type": "Corn", "index_name": "savi", "poor_max": 0.3, "moderate_max": 0.6, "weight": 0.2},
+        {"crop_type": "Corn", "index_name": "evi", "poor_max": 0.3, "moderate_max": 0.6, "weight": 0.2},
+        {"crop_type": "Corn", "index_name": "ndmi", "poor_max": 0.2, "moderate_max": 0.4, "weight": 0.1},
+        {"crop_type": "Corn", "index_name": "ndwi", "poor_max": 0.2, "moderate_max": 0.4, "weight": 0.1},
     ]
     
     for d in defaults:
