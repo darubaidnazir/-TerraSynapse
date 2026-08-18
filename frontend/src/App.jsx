@@ -110,9 +110,21 @@ function App() {
 
   return (
     <div className="flex flex-col h-screen">
-      <header className="bg-green-700 text-white p-4 font-bold shadow-md z-10 flex justify-between items-center">
-        <span>TerraSynapse</span>
-        {loading && <span className="text-sm font-normal animate-pulse">{statusMsg}</span>}
+      <header className="bg-green-800/95 backdrop-blur-md text-white p-4 shadow-md z-20 flex justify-between items-center sticky top-0 border-b border-green-700">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 bg-white/10 rounded-lg flex items-center justify-center border border-white/20">
+            <svg className="w-5 h-5 text-green-100" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+          </div>
+          <span className="text-xl font-bold tracking-tight text-white">TerraSynapse</span>
+        </div>
+        {loading && (
+          <div className="flex items-center gap-2 bg-green-900/50 px-3 py-1.5 rounded-full border border-green-700/50">
+            <div className="w-4 h-4 border-2 border-green-200 border-t-transparent rounded-full animate-spin"></div>
+            <span className="text-sm font-medium text-green-100">{statusMsg}</span>
+          </div>
+        )}
       </header>
       
       <main className="flex-1 relative">

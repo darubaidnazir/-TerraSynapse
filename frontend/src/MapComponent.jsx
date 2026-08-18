@@ -44,7 +44,8 @@ export default function MapComponent({center, zoom, onPolygonSubmit}) {
           ]
         },
         center: center,
-        zoom: zoom
+        zoom: zoom,
+        maxZoom: 19
       });
 
       draw.current = new MapboxDraw({
@@ -103,8 +104,8 @@ export default function MapComponent({center, zoom, onPolygonSubmit}) {
   };
 
   return (
-    <div className="w-full h-full relative">
-      <div ref={mapContainer} className="absolute inset-0 bg-blue-50" />
+    <div className="w-full h-full absolute inset-0">
+      <div ref={mapContainer} className="w-full h-full" />
       <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-10">
         <div className="bg-white p-4 rounded shadow-lg flex flex-col items-center">
           <div className="text-red-500 mb-2">{error}</div>
