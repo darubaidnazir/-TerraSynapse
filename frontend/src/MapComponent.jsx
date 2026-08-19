@@ -294,13 +294,19 @@ export default function MapComponent({center, zoom, userLocation, onPolygonSubmi
                disabled={isWalking}
                className={`py-3 rounded-xl font-bold text-white shadow-lg flex-1 flex justify-center items-center gap-2 transition-all ${isDrawing ? 'bg-red-500 hover:bg-red-600 animate-pulse' : isWalking ? 'bg-gray-400 opacity-50 cursor-not-allowed' : 'bg-orange-500 hover:bg-orange-600'}`}
              >
-               {isDrawing ? "Tap map to draw..." : "Draw Manually"}
+               {isDrawing ? "Cancel Drawing" : "Draw Manually"}
              </button>
            </div>
            
            {isWalking && gpsWarning && (
              <div className="bg-yellow-100 text-yellow-800 text-xs font-bold px-3 py-1.5 rounded-full shadow border border-yellow-300">
                ⚠️ {gpsWarning}
+             </div>
+           )}
+
+           {isDrawing && (
+             <div className="bg-orange-100 text-orange-800 text-xs font-bold px-3 py-1.5 rounded-full shadow border border-orange-300 animate-bounce">
+               👆 Tap the map to start drawing your field
              </div>
            )}
 
