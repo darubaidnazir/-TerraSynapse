@@ -40,8 +40,8 @@ export default function MapComponent({center, zoom, userLocation, onPolygonSubmi
     const area = turf.area(feature); // in sq meters
     const areaHa = area / 10000;
     
-    if (areaHa < 0.01) {
-      setError("Area is too small ( < 100 mq )");
+    if (areaHa < 0.0001) {
+      setError("Area is too small ( < 1 sq meter )");
     } else if (areaHa > 5000) {
       setError("Area is too large (> 5000 ha)");
     } else {
