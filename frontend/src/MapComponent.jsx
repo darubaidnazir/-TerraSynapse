@@ -273,7 +273,8 @@ export default function MapComponent({center, zoom, userLocation, onPolygonSubmi
            <div className="flex w-full gap-2 px-1">
              <button 
                onClick={isWalking ? stopWalking : startWalking}
-               className={`py-3 rounded-xl font-bold text-white shadow-lg flex-1 flex justify-center items-center gap-2 transition-all ${isWalking ? 'bg-red-500 hover:bg-red-600 animate-pulse' : 'bg-blue-600 hover:bg-blue-700'}`}
+               disabled={isDrawing}
+               className={`py-3 rounded-xl font-bold text-white shadow-lg flex-1 flex justify-center items-center gap-2 transition-all ${isWalking ? 'bg-red-500 hover:bg-red-600 animate-pulse' : isDrawing ? 'bg-gray-400 opacity-50 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}
              >
                {isWalking ? (
                  <>
@@ -290,7 +291,8 @@ export default function MapComponent({center, zoom, userLocation, onPolygonSubmi
 
              <button 
                onClick={isDrawing ? cancelDrawing : startDrawing}
-               className={`py-3 rounded-xl font-bold text-white shadow-lg flex-1 flex justify-center items-center gap-2 transition-all ${isDrawing ? 'bg-red-500 hover:bg-red-600 animate-pulse' : 'bg-orange-500 hover:bg-orange-600'}`}
+               disabled={isWalking}
+               className={`py-3 rounded-xl font-bold text-white shadow-lg flex-1 flex justify-center items-center gap-2 transition-all ${isDrawing ? 'bg-red-500 hover:bg-red-600 animate-pulse' : isWalking ? 'bg-gray-400 opacity-50 cursor-not-allowed' : 'bg-orange-500 hover:bg-orange-600'}`}
              >
                {isDrawing ? "Tap map to draw..." : "Draw Manually"}
              </button>
