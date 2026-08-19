@@ -40,10 +40,10 @@ export default function MapComponent({center, zoom, userLocation, onPolygonSubmi
     const area = turf.area(feature); // in sq meters
     const areaHa = area / 10000;
     
-    if (areaHa < 0.0001) {
-      setError("Area is too small ( < 1 sq meter )");
+    if (areaHa < 0.01) {
+      setError("Field is too small. Please draw a larger area.");
     } else if (areaHa > 5000) {
-      setError("Area is too large (> 5000 ha)");
+      setError("Field is too large. Please draw a smaller area.");
     } else {
       setActiveFeature(feature);
     }
@@ -86,11 +86,7 @@ export default function MapComponent({center, zoom, userLocation, onPolygonSubmi
         styles: drawTheme,
         displayControlsDefault: false
       });
-      // We no longer add the tiny default controls to the map UI
       map.current.addControl(draw.current, "top-right");
-      // Wait, we DO need to add the control object to the map for it to work, 
-      // but we removed the visible buttons by setting displayControlsDefault: false and controls: {}
-      // Let's actually remove the visual CSS by just not passing controls.
 
       map.current.on("draw.create", validateAndSet);
       map.current.on("draw.update", validateAndSet);
@@ -156,12 +152,12 @@ export default function MapComponent({center, zoom, userLocation, onPolygonSubmi
   }, [walkPath]);
 
   const startWalking = () => {
-    if (!("geolocation" in navigator)) return alert("Geolocation not supported");
+    if (!("geolocation" in navigator)) return alert("Geolocation not supported by your phone.");
     
     setWalkPath([]);
     setIsWalking(true);
     setError(null);
-    setGpsWarning("Waiting for initial GPS lock...");
+    setGpsWarning("Getting GPS Signal...");
     setCurrentAccuracy(null);
     
     watchIdRef.current = navigator.geolocation.watchPosition(
@@ -214,7 +210,7 @@ export default function MapComponent({center, zoom, userLocation, onPolygonSubmi
       validateAndSet();
       setWalkPath([]); // Hide the blue line once polygon is drawn
     } else {
-      setError("Not enough movement recorded to create a boundary.");
+      setError("Please walk further to create a boundary.");
       setWalkPath([]);
     }
   };
@@ -254,13 +250,13 @@ export default function MapComponent({center, zoom, userLocation, onPolygonSubmi
     else if (currentAccuracy <= 20) bars = 1;
 
     return (
-      <div className="flex items-center gap-2 bg-white/95 border border-gray-200 backdrop-blur px-4 py-2 rounded-full shadow-sm text-sm font-bold text-gray-700">
-        <div className="flex items-end gap-1 h-4">
-          <div className={`w-1.5 rounded-sm ${bars >= 1 ? (bars === 1 ? 'bg-yellow-500' : 'bg-green-500') : 'bg-gray-300'} h-2`} />
-          <div className={`w-1.5 rounded-sm ${bars >= 2 ? 'bg-green-500 h-3' : 'bg-gray-300 h-3'}`} />
-          <div className={`w-1.5 rounded-sm ${bars >= 3 ? 'bg-green-500 h-full' : 'bg-gray-300 h-full'}`} />
+      <div className="flex items-center gap-2 bg-white/95 border border-gray-200 backdrop-blur px-4 py-2 rounded-full shadow-md text-sm font-bold text-gray-800">
+        <div className="flex items-end gap-1 h-5">
+          <div className={`w-1.5 rounded-sm ${bars >= 1 ? (bars === 1 ? 'bg-yellow-500' : 'bg-green-500') : 'bg-gray-300'} h-3`} />
+          <div className={`w-1.5 rounded-sm ${bars >= 2 ? 'bg-green-500 h-4' : 'bg-gray-300 h-4'}`} />
+          <div className={`w-1.5 rounded-sm ${bars >= 3 ? 'bg-green-500 h-5' : 'bg-gray-300 h-5'}`} />
         </div>
-        <span>{Math.round(currentAccuracy)}m Accuracy</span>
+        <span>GPS Accuracy: {Math.round(currentAccuracy)}m</span>
       </div>
     );
   };
@@ -268,89 +264,108 @@ export default function MapComponent({center, zoom, userLocation, onPolygonSubmi
   return (
     <div className="w-full h-full absolute inset-0">
       <div ref={mapContainer} className="w-full h-full" />
+      
+      {/* Bottom Floating Controls */}
       <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 z-10 w-[calc(100%-2rem)] max-w-lg flex flex-col gap-3">
         
-        <div className="flex flex-col items-center w-full pointer-events-auto gap-2">
-           {isWalking && renderGpsSignal()}
-           <div className="flex w-full gap-2 px-1">
-             <button 
-               onClick={isWalking ? stopWalking : startWalking}
-               disabled={isDrawing}
-               className={`py-3 rounded-xl font-bold text-white shadow-lg flex-1 flex justify-center items-center gap-2 transition-all ${isWalking ? 'bg-red-500 hover:bg-red-600 animate-pulse' : isDrawing ? 'bg-gray-400 opacity-50 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}
-             >
-               {isWalking ? (
-                 <>
-                   <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="6" y="6" width="12" height="12" rx="2" ry="2"></rect></svg>
-                   Stop Walking ({walkPath.length})
-                 </>
-               ) : (
-                 <>
-                   <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"></path><path d="M14 8a4 4 0 0 0-4 4v9a1 1 0 0 0 2 0v-4h2v4a1 1 0 0 0 2 0v-6"></path><path d="M10 11H8"></path><path d="M16 11h2"></path></svg>
-                   Walk Boundary
-                 </>
-               )}
-             </button>
-
-             <button 
-               onClick={isDrawing ? cancelDrawing : startDrawing}
-               disabled={isWalking}
-               className={`py-3 rounded-xl font-bold text-white shadow-lg flex-1 flex justify-center items-center gap-2 transition-all ${isDrawing ? 'bg-red-500 hover:bg-red-600 animate-pulse' : isWalking ? 'bg-gray-400 opacity-50 cursor-not-allowed' : 'bg-orange-500 hover:bg-orange-600'}`}
-             >
-               {isDrawing ? "Cancel Drawing" : "Draw Manually"}
-             </button>
-           </div>
-           
-           {isWalking && gpsWarning && (
-             <div className="bg-yellow-100 text-yellow-800 text-xs font-bold px-3 py-1.5 rounded-full shadow border border-yellow-300">
-               ⚠️ {gpsWarning}
-             </div>
-           )}
-
-           {isDrawing && (
-             <div className="bg-orange-100 text-orange-800 text-xs font-bold px-3 py-1.5 rounded-full shadow border border-orange-300 animate-bounce">
-               👆 Tap the map to start drawing your field
-             </div>
-           )}
-
-           {activeFeature && (
-             <button onClick={clearDrawing} className="bg-white text-red-500 px-4 py-1.5 rounded-full text-xs font-bold shadow hover:bg-red-50 transition-all border border-red-100">
-               🗑️ Clear Current Field
-             </button>
-           )}
-        </div>
-
-        <div className="bg-white/95 backdrop-blur-md p-3 md:p-4 rounded-xl shadow-xl border border-gray-100 flex flex-col items-center gap-3 w-full pointer-events-auto">
-          <div className="flex flex-col sm:flex-row items-center gap-2 w-full">
-            <select 
-              value={cropType} 
-              onChange={e => setCropType(e.target.value)}
-              className="bg-white border border-gray-200 text-gray-800 text-sm font-medium rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 block w-full sm:w-1/3 p-2.5 outline-none transition-all shadow-sm cursor-pointer"
-            >
-              <option value="default">Generic Crop</option>
-              <option value="Wheat">Wheat</option>
-              <option value="Corn">Corn</option>
-            </select>
+        {/* Step 1: Draw or Walk */}
+        {!activeFeature && (
+          <div className="flex flex-col items-center w-full pointer-events-auto gap-3 bg-white/90 p-4 rounded-2xl shadow-2xl border border-gray-100">
+            <h3 className="text-lg font-bold text-gray-800 text-center w-full">Step 1: Add Your Field</h3>
             
-            <input 
-              type="date"
-              value={plantingDate}
-              onChange={e => setPlantingDate(e.target.value)}
-              className="bg-white border border-gray-200 text-gray-800 text-sm font-medium rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 block w-full sm:w-1/3 p-2.5 outline-none transition-all shadow-sm cursor-pointer"
-              title="Planting Date (Optional)"
-            />
+            {isWalking && renderGpsSignal()}
+            {isWalking && gpsWarning && (
+              <div className="bg-yellow-100 text-yellow-800 text-sm font-bold px-4 py-2 rounded-xl shadow w-full text-center">
+                ⚠️ {gpsWarning}
+              </div>
+            )}
+            
+            {isDrawing && (
+              <div className="bg-orange-100 text-orange-900 text-sm font-bold px-4 py-3 rounded-xl shadow w-full text-center border border-orange-200">
+                👆 Tap the corners of your field on the map to draw the boundary.
+              </div>
+            )}
+            
+            <div className="flex flex-col sm:flex-row w-full gap-3">
+              <button 
+                onClick={isWalking ? stopWalking : startWalking}
+                disabled={isDrawing}
+                className={`py-4 rounded-xl font-bold text-white shadow-lg flex-1 flex justify-center items-center gap-2 transition-all text-lg ${isWalking ? 'bg-red-500 hover:bg-red-600 animate-pulse' : isDrawing ? 'bg-gray-400 opacity-50 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}
+              >
+                {isWalking ? (
+                  <>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="6" y="6" width="12" height="12" rx="2" ry="2"></rect></svg>
+                    Finish Walking ({walkPath.length})
+                  </>
+                ) : (
+                  <>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"></path><path d="M14 8a4 4 0 0 0-4 4v9a1 1 0 0 0 2 0v-4h2v4a1 1 0 0 0 2 0v-6"></path><path d="M10 11H8"></path><path d="M16 11h2"></path></svg>
+                    Walk Boundary
+                  </>
+                )}
+              </button>
 
-            <button 
-              onClick={handleSubmit}
-              disabled={!activeFeature || error}
-              className={`${!activeFeature || error ? "bg-gray-300 text-gray-500 cursor-not-allowed" : "bg-green-600 hover:bg-green-700 text-white shadow-md active:scale-95"} px-4 py-2.5 rounded-lg font-bold text-sm transition-all whitespace-nowrap w-full sm:w-1/3`}
-            >
-              Save Field
-            </button>
+              <button 
+                onClick={isDrawing ? cancelDrawing : startDrawing}
+                disabled={isWalking}
+                className={`py-4 rounded-xl font-bold text-white shadow-lg flex-1 flex justify-center items-center gap-2 transition-all text-lg ${isDrawing ? 'bg-red-500 hover:bg-red-600' : isWalking ? 'bg-gray-400 opacity-50 cursor-not-allowed' : 'bg-orange-500 hover:bg-orange-600'}`}
+              >
+                {isDrawing ? "Cancel Drawing" : "Tap to Draw"}
+              </button>
+            </div>
+            {error && <div className="text-red-500 text-sm font-bold w-full text-center bg-red-50 py-2 rounded-xl mt-2">{error}</div>}
           </div>
-          {error && <div className="text-red-500 text-xs font-bold w-full text-center bg-red-50 py-1 rounded">{error}</div>}
-        </div>
+        )}
+
+        {/* Step 2: Details & Submit (Visible only when field is drawn) */}
+        {activeFeature && (
+          <div className="bg-white/95 backdrop-blur-md p-4 rounded-2xl shadow-2xl border border-gray-100 flex flex-col gap-4 w-full pointer-events-auto">
+            
+            <div className="flex justify-between items-center border-b pb-2">
+              <h3 className="text-lg font-bold text-gray-800">Step 2: Field Details</h3>
+              <button onClick={clearDrawing} className="text-red-500 text-sm font-bold hover:underline">
+                Redraw Field
+              </button>
+            </div>
+
+            <div className="flex flex-col gap-3">
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">Crop Type</label>
+                <select 
+                  value={cropType} 
+                  onChange={e => setCropType(e.target.value)}
+                  className="bg-gray-50 border border-gray-300 text-gray-900 text-lg font-medium rounded-xl focus:ring-2 focus:ring-green-500 block w-full p-3 outline-none shadow-sm"
+                >
+                  <option value="default">Generic / Mixed Crop</option>
+                  <option value="Wheat">Wheat</option>
+                  <option value="Corn">Corn</option>
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">Planting Date (Optional)</label>
+                <input 
+                  type="date"
+                  value={plantingDate}
+                  onChange={e => setPlantingDate(e.target.value)}
+                  className="bg-gray-50 border border-gray-300 text-gray-900 text-lg font-medium rounded-xl focus:ring-2 focus:ring-green-500 block w-full p-3 outline-none shadow-sm"
+                />
+              </div>
+
+              <button 
+                onClick={handleSubmit}
+                disabled={error}
+                className={`${error ? "bg-gray-300 text-gray-500" : "bg-green-600 hover:bg-green-700 text-white shadow-lg active:scale-95"} py-4 mt-2 rounded-xl font-bold text-xl transition-all w-full flex items-center justify-center gap-2`}
+              >
+                Analyze Field Health
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg>
+              </button>
+            </div>
+            
+            {error && <div className="text-red-500 text-sm font-bold w-full text-center bg-red-50 py-2 rounded">{error}</div>}
+          </div>
+        )}
       </div>
     </div>
   );
 }
-

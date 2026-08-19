@@ -7,9 +7,8 @@ export default function Dashboard({ field, result, onReset }) {
 
   useEffect(() => {
     if (field?.field_id) {
-      axios.get(`http://localhost:8000/api/fields/${field.field_id}/trends`)
+      axios.get(`http://${window.location.hostname}:8000/api/fields/${field.field_id}/trends`)
         .then(res => {
-          // Format data for recharts
           const chartData = res.data.map(run => {
             const date = run.acquisition_date || new Date(run.run_date).toISOString().split('T')[0];
             return {
@@ -28,150 +27,141 @@ export default function Dashboard({ field, result, onReset }) {
 
   const score = result.health_score_pct || 0;
   let scoreColor = "text-green-600";
-  if (score < 50) scoreColor = "text-red-600";
-  else if (score < 80) scoreColor = "text-yellow-600";
+  let scoreBg = "bg-green-100 border-green-300";
+  let scoreMessage = "Looking Good!";
+  
+  if (score < 50) {
+    scoreColor = "text-red-600";
+    scoreBg = "bg-red-100 border-red-300";
+    scoreMessage = "Needs Attention";
+  } else if (score < 80) {
+    scoreColor = "text-yellow-600";
+    scoreBg = "bg-yellow-100 border-yellow-300";
+    scoreMessage = "Fair Condition";
+  }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6 overflow-auto">
-      <div className="max-w-6xl mx-auto space-y-6 pb-12">
+    <div className="min-h-screen bg-gray-50 flex flex-col">
+      {/* Header */}
+      <header className="bg-green-800 text-white p-4 shadow-md flex justify-between items-center sticky top-0 z-20 h-16">
+        <h1 className="text-xl font-bold">Field Analysis</h1>
+        <button 
+          onClick={onReset}
+          className="px-4 py-2 bg-white text-green-800 rounded-lg font-bold text-sm shadow active:scale-95"
+        >
+          Back to Map
+        </button>
+      </header>
+
+      <div className="flex-1 overflow-auto p-4 pb-20 space-y-6">
         
-        {/* Header */}
-        <div className="flex justify-between items-center bg-white p-6 rounded-lg shadow">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-800">Field Analysis</h1>
-            <p className="text-gray-500">Area: {field.area_ha?.toFixed(2)} ha</p>
+        {/* Massive Health Score Card */}
+        <div className={`rounded-2xl shadow-lg border-2 p-6 text-center ${scoreBg}`}>
+          <p className="text-gray-600 font-bold uppercase tracking-wider text-sm mb-2">Overall Crop Health</p>
+          <div className={`text-7xl font-extrabold ${scoreColor}`}>
+            {score.toFixed(0)}<span className="text-4xl">%</span>
           </div>
-          <div className="text-right">
-            <p className="text-sm text-gray-500 uppercase tracking-wide">Overall Health</p>
-            <p className={`text-4xl font-extrabold ${scoreColor}`}>
-              {score.toFixed(1)}%
-            </p>
-          </div>
-                              <div className="flex space-x-2">
-            <button 
-              onClick={() => window.open(`http://localhost:8000/api/jobs/${result.job_id}/export?format=csv`)}
-              className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 text-sm font-bold"
-            >
-              CSV
-            </button>
-            <button 
-              onClick={() => window.open(`http://localhost:8000/api/jobs/${result.job_id}/export?format=pdf`)}
-              className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 text-sm font-bold"
-            >
-              PDF
-            </button>
-            <button 
-              onClick={onReset}
-              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm font-bold"
-            >
-              New Field
-            </button>
-          </div>
+          <p className={`text-xl font-bold mt-2 ${scoreColor}`}>{scoreMessage}</p>
+          <p className="text-gray-500 text-sm mt-3">Area: {field.area_ha?.toFixed(2)} ha</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          
-          {/* Metrics Grid */}
-          <div className="md:col-span-2 grid grid-cols-2 gap-4">
-            {Object.entries(result.indices || {}).map(([key, data]) => {
-              if (!data.mean) return null;
-              
-              let badgeColor = "bg-gray-200 text-gray-800";
-              if (data.label === "poor") badgeColor = "bg-red-100 text-red-800";
-              if (data.label === "moderate") badgeColor = "bg-yellow-100 text-yellow-800";
-              if (data.label === "healthy") badgeColor = "bg-green-100 text-green-800";
+        {/* AI Recommendations - Front and Center */}
+        <div className="bg-white rounded-2xl shadow border border-gray-100 p-5">
+          <h2 className="text-xl font-extrabold text-gray-800 mb-4 flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-500"><path d="M12 2v4"></path><path d="m16.2 7.8 2.9-2.9"></path><path d="M18 12h4"></path><path d="m16.2 16.2 2.9 2.9"></path><path d="M12 18v4"></path><path d="m4.9 19.1 2.9-2.9"></path><path d="M2 12h4"></path><path d="m4.9 4.9 2.9 2.9"></path></svg>
+            What Should I Do?
+          </h2>
+          <div className="space-y-4">
+            {(result.recommendations || []).map((rec, i) => {
+              let pColor = "bg-gray-100 border-gray-300";
+              let icon = "💡";
+              if (rec.priority === "high") {
+                pColor = "bg-red-50 border-red-300";
+                icon = "🚨";
+              }
+              if (rec.priority === "medium") {
+                pColor = "bg-yellow-50 border-yellow-300";
+                icon = "⚠️";
+              }
+              if (rec.priority === "low") {
+                pColor = "bg-green-50 border-green-300";
+                icon = "✅";
+              }
 
               return (
-                <div key={key} className="bg-white p-4 rounded-lg shadow border-l-4 border-blue-500">
-                  <div className="flex justify-between items-start mb-2">
-                    <h3 className="font-bold text-gray-700 uppercase">{key}</h3>
-                    {data.label && (
-                      <span className={`text-xs px-2 py-1 rounded-full uppercase font-bold ${badgeColor}`}>
-                        {data.label}
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-2xl font-semibold text-gray-900">
-                    {data.mean.toFixed(3)} <span className="text-sm text-gray-500 font-normal">{data.unit}</span>
-                  </p>
-                  
-                  {/* Data Source & Confidence */}
-                  {data.source && (
-                    <div className="mt-3 flex items-center justify-between text-[10px] font-semibold tracking-wide uppercase">
-                      <span className="text-gray-400">Src: {data.source}</span>
-                      {data.confidence && (
-                        <span className={`px-1.5 py-0.5 rounded ${
-                          data.confidence === 'High' ? 'bg-green-50 text-green-600' :
-                          data.confidence === 'Moderate' ? 'bg-yellow-50 text-yellow-600' :
-                          'bg-gray-100 text-gray-500'
-                        }`}>
-                          {data.confidence}
-                        </span>
-                      )}
-                    </div>
-                  )}
-
-                  {data.needs_calibration && (
-                    <p className="text-xs text-red-500 mt-2">* Default thresholds used</p>
-                  )}
+                <div key={i} className={`p-4 rounded-xl border-l-4 ${pColor}`}>
+                  <h4 className="font-bold text-lg text-gray-900 flex items-start gap-2 mb-2">
+                    <span>{icon}</span> {rec.title}
+                  </h4>
+                  <p className="text-base text-gray-700 leading-relaxed ml-7">{rec.description}</p>
                 </div>
               );
             })}
           </div>
+        </div>
 
-          {/* Recommendations Panel */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-lg font-bold text-gray-800 mb-4 border-b pb-2">AI Recommendations</h2>
-            <div className="space-y-4">
-              {(result.recommendations || []).map((rec, i) => {
-                let pColor = "bg-gray-100";
-                if (rec.priority === "high") pColor = "bg-red-100 border-l-4 border-red-500";
-                if (rec.priority === "medium") pColor = "bg-yellow-100 border-l-4 border-yellow-500";
-                if (rec.priority === "low") pColor = "bg-green-100 border-l-4 border-green-500";
+        {/* Advanced Scientific Data - Hidden by default */}
+        <details className="bg-white rounded-2xl shadow border border-gray-100 group">
+          <summary className="font-bold text-gray-700 cursor-pointer list-none flex items-center justify-between p-5">
+            View Advanced Scientific Data
+            <span className="transition group-open:rotate-180">
+              <svg fill="none" height="24" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" width="24"><path d="M6 9l6 6 6-6"></path></svg>
+            </span>
+          </summary>
+          
+          <div className="p-5 pt-0 border-t border-gray-100 mt-2 space-y-6">
+            <div className="grid grid-cols-2 gap-3">
+              {Object.entries(result.indices || {}).map(([key, data]) => {
+                if (!data.mean) return null;
+                
+                let badgeColor = "text-gray-500";
+                if (data.label === "poor") badgeColor = "text-red-500";
+                if (data.label === "moderate") badgeColor = "text-yellow-600";
+                if (data.label === "healthy") badgeColor = "text-green-500";
 
                 return (
-                  <div key={i} className={`p-3 rounded ${pColor}`}>
-                    <div className="flex justify-between items-center mb-1">
-                      <h4 className="font-bold text-sm text-gray-800">{rec.title}</h4>
-                      <span className="text-[10px] uppercase tracking-wider text-gray-600 font-bold">{rec.priority}</span>
-                    </div>
-                    <p className="text-xs text-gray-700">{rec.description}</p>
+                  <div key={key} className="bg-gray-50 p-3 rounded-xl border border-gray-200">
+                    <h3 className="font-bold text-gray-600 uppercase text-xs mb-1">{key}</h3>
+                    <p className={`text-lg font-bold ${badgeColor}`}>
+                      {data.mean.toFixed(2)} <span className="text-xs text-gray-400 font-normal">{data.unit}</span>
+                    </p>
                   </div>
                 );
               })}
             </div>
-          </div>
-        </div>
-        
-        {/* Historical Trends Chart */}
-        <div className="bg-white rounded-lg shadow p-6 w-full">
-            <h2 className="text-lg font-bold text-gray-800 mb-4 border-b pb-2">Historical Trends</h2>
-            <div className="h-64 w-full">
-              {trends.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={trends} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="date" />
-                    <YAxis yAxisId="left" domain={[0, 100]} />
-                    <YAxis yAxisId="right" orientation="right" domain={[-1, 1]} />
-                    <Tooltip />
-                    <Legend />
-                    <Line yAxisId="left" type="monotone" dataKey="health" stroke="#16a34a" name="Health Score %" activeDot={{ r: 8 }} />
-                    <Line yAxisId="right" type="monotone" dataKey="ndvi" stroke="#2563eb" name="NDVI" />
-                  </LineChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="flex h-full items-center justify-center text-gray-400 italic">
-                  No historical data available yet.
-                </div>
-              )}
+            
+            <div>
+              <h3 className="font-bold text-gray-700 mb-3">Historical Trends</h3>
+              <div className="h-48 w-full bg-gray-50 rounded-xl p-2 border border-gray-200">
+                {trends.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={trends} margin={{ top: 5, right: 5, bottom: 5, left: -20 }}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                      <XAxis dataKey="date" tick={{fontSize: 10}} />
+                      <YAxis yAxisId="left" domain={[0, 100]} tick={{fontSize: 10}} />
+                      <Tooltip />
+                      <Line yAxisId="left" type="monotone" dataKey="health" stroke="#16a34a" strokeWidth={3} dot={{ r: 4 }} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex h-full items-center justify-center text-gray-400 text-sm italic">
+                    No historical data available.
+                  </div>
+                )}
+              </div>
             </div>
-        </div>
-
+            
+            <div className="flex gap-2 pt-2">
+              <button 
+                onClick={() => window.open(`http://${window.location.hostname}:8000/api/jobs/${result.job_id}/export?format=pdf`)}
+                className="flex-1 py-3 bg-gray-800 text-white rounded-xl font-bold text-sm text-center"
+              >
+                Download PDF Report
+              </button>
+            </div>
+          </div>
+        </details>
       </div>
     </div>
   );
 }
-
-
-

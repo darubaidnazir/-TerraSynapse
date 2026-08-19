@@ -5,7 +5,6 @@ import { UploadCloud, FileJson, FileArchive, Map } from "lucide-react";
 export default function FileUpload({ onGeojsonUpload, onZipUpload }) {
   const fileInput = useRef(null);
   const [isDragging, setIsDragging] = useState(false);
-  const [showOverrides, setShowOverrides] = useState(false);
   const [overrides, setOverrides] = useState({
     override_ph: "", override_organic_carbon: "", override_cec: "", override_n_proxy: "", crop_type: "default", planting_date: ""
   });
@@ -49,31 +48,10 @@ export default function FileUpload({ onGeojsonUpload, onZipUpload }) {
   };
 
   return (
-    <div className="bg-white/90 backdrop-blur-md p-4 rounded-xl shadow-lg border border-gray-100 w-full transition-all">
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
-          <Map className="w-4 h-4 text-blue-600" />
-          <h2 className="text-sm font-bold text-gray-800">Upload Boundary</h2>
-        </div>
-        <button onClick={() => setShowOverrides(!showOverrides)} className="text-xs text-blue-600 hover:underline">
-          {showOverrides ? 'Hide Overrides' : 'Soil Overrides'}
-        </button>
-      </div>
-
-      {showOverrides && (
-        <div className="mb-4 grid grid-cols-2 gap-2 p-3 bg-gray-50 rounded border text-xs">
-          <input name="crop_type" placeholder="Crop (Wheat/Corn)" className="p-1 border rounded w-full" onChange={handleOverrideChange}/>
-          <input name="planting_date" type="date" title="Planting Date" className="p-1 border rounded w-full" onChange={handleOverrideChange}/>
-          <input name="override_ph" type="number" step="0.1" placeholder="pH (*10)" className="p-1 border rounded w-full" onChange={handleOverrideChange}/>
-          <input name="override_organic_carbon" type="number" placeholder="Org Carbon (dg/kg)" className="p-1 border rounded w-full" onChange={handleOverrideChange}/>
-          <input name="override_cec" type="number" placeholder="CEC (mmol/kg)" className="p-1 border rounded w-full" onChange={handleOverrideChange}/>
-          <input name="override_n_proxy" type="number" placeholder="Nitrogen (cg/kg)" className="p-1 border rounded w-full" onChange={handleOverrideChange}/>
-        </div>
-      )}
-      
+    <div className="w-full">
       <div 
-        className={`border-2 border-dashed rounded-lg p-5 text-center cursor-pointer transition-all
-          ${isDragging ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400 hover:bg-gray-50/50'}`}
+        className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all mb-4
+          ${isDragging ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400 bg-white'}`}
         onClick={() => fileInput.current.click()}
         onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
         onDragLeave={() => setIsDragging(false)}
@@ -85,14 +63,26 @@ export default function FileUpload({ onGeojsonUpload, onZipUpload }) {
           }
         }}
       >
-        <UploadCloud className={`w-8 h-8 mx-auto mb-2 transition-colors ${isDragging ? 'text-blue-500' : 'text-gray-400'}`} />
-        <p className="text-sm font-medium text-gray-700">Click or drag file to upload</p>
-        <div className="flex justify-center gap-3 mt-3 text-[11px] font-semibold tracking-wide text-gray-500 uppercase">
-          <span className="flex items-center gap-1"><FileArchive className="w-3 h-3"/> ZIP</span>
-          <span className="flex items-center gap-1"><Map className="w-3 h-3"/> KML</span>
-          <span className="flex items-center gap-1"><FileJson className="w-3 h-3"/> GEOJSON</span>
+        <UploadCloud className={`w-12 h-12 mx-auto mb-3 transition-colors ${isDragging ? 'text-blue-500' : 'text-gray-400'}`} />
+        <p className="text-lg font-bold text-gray-700">Tap to select a file</p>
+        <div className="flex justify-center gap-4 mt-4 text-xs font-bold tracking-wide text-gray-500 uppercase">
+          <span className="flex items-center gap-1"><FileArchive className="w-4 h-4"/> ZIP</span>
+          <span className="flex items-center gap-1"><Map className="w-4 h-4"/> KML</span>
+          <span className="flex items-center gap-1"><FileJson className="w-4 h-4"/> GEOJSON</span>
         </div>
       </div>
+      
+      <details className="bg-gray-100 rounded-lg p-3">
+        <summary className="text-sm font-bold text-gray-600 cursor-pointer">Technical Soil Overrides</summary>
+        <div className="mt-3 grid grid-cols-1 gap-3 text-sm">
+          <input name="crop_type" placeholder="Crop (Wheat/Corn)" className="p-3 border rounded-lg w-full" onChange={handleOverrideChange}/>
+          <input name="planting_date" type="date" title="Planting Date" className="p-3 border rounded-lg w-full" onChange={handleOverrideChange}/>
+          <input name="override_ph" type="number" step="0.1" placeholder="pH (*10)" className="p-3 border rounded-lg w-full" onChange={handleOverrideChange}/>
+          <input name="override_organic_carbon" type="number" placeholder="Org Carbon (dg/kg)" className="p-3 border rounded-lg w-full" onChange={handleOverrideChange}/>
+          <input name="override_cec" type="number" placeholder="CEC (mmol/kg)" className="p-3 border rounded-lg w-full" onChange={handleOverrideChange}/>
+          <input name="override_n_proxy" type="number" placeholder="Nitrogen (cg/kg)" className="p-3 border rounded-lg w-full" onChange={handleOverrideChange}/>
+        </div>
+      </details>
       
       <input 
         type="file" 

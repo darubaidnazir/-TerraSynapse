@@ -4,6 +4,7 @@ import MapComponent from "./MapComponent";
 import SearchBar from "./SearchBar";
 import FileUpload from "./FileUpload";
 import Dashboard from "./Dashboard";
+import { Menu, X } from "lucide-react";
 
 function App() {
   const [center, setCenter] = useState([0, 0]);
@@ -14,8 +15,10 @@ function App() {
   const [currentField, setCurrentField] = useState(null);
   const [analysisResult, setAnalysisResult] = useState(null);
   const [userLocation, setUserLocation] = useState(null);
-  const [showMapMobile, setShowMapMobile] = useState(false);
   const [locationError, setLocationError] = useState(false);
+  
+  // UI States
+  const [showMenu, setShowMenu] = useState(false);
 
   const fetchLocation = () => {
     setLocationError(false);
@@ -26,7 +29,7 @@ function App() {
           setCenter(coords);
           setZoom(18); // Zoom in closely to their location
           setUserLocation(coords);
-          setShowMapMobile(true); // Auto-open map if location fetched successfully
+          setShowMenu(false);
         },
         (error) => {
           console.warn("Geolocation error or denied:", error);
@@ -36,23 +39,20 @@ function App() {
       );
     } else {
       setLocationError(true);
-      alert("Geolocation is not supported by your browser.");
+      alert("Geolocation is not supported by your phone.");
     }
   };
-
-  // Location is now ONLY fetched when the user explicitly clicks a button,
-  // preventing immediate errors or unwanted permission popups on load.
-
 
   const handleSearchSelect = (lon, lat) => {
     setCenter([lon, lat]);
     setZoom(14);
+    setShowMenu(false);
   };
 
   const handlePolygonSubmit = async (feature, cropType = "default", plantingDate = null, overrides = {}) => {
     try {
       setLoading(true);
-      setStatusMsg("Saving field...");
+      setStatusMsg("Saving your field...");
       
       const payload = {
         name: "My Field",
@@ -71,7 +71,7 @@ function App() {
       startAnalysis(fieldData.field_id);
     } catch (err) {
       console.error(err);
-      alert("Error saving field.");
+      alert("Error saving field. Please try again.");
       setLoading(false);
     }
   };
@@ -80,14 +80,14 @@ function App() {
     if (geojson.features && geojson.features.length > 0) {
       handlePolygonSubmit(geojson.features[0], overrides.crop_type || "default", overrides.planting_date || null, overrides);
     } else {
-      alert("Error: No polygons found in the file. Ensure the shapefile/KML contains valid geometries.");
+      alert("Error: No boundary found in the file.");
     }
   };
 
   const handleZipUpload = async (file, overrides = {}) => {
     try {
       setLoading(true);
-      setStatusMsg("Uploading shapefile...");
+      setStatusMsg("Uploading field...");
       const formData = new FormData();
       formData.append("file", file);
       formData.append("name", "Uploaded Field");
@@ -105,26 +105,26 @@ function App() {
       startAnalysis(fieldData.field_id);
     } catch (err) {
       console.error(err);
-      alert("Error uploading zip.");
+      alert("Error uploading field.");
       setLoading(false);
     }
   };
 
   const startAnalysis = async (fieldId) => {
     try {
-      setStatusMsg("Starting GEE analysis...");
+      setStatusMsg("Looking at your field from space...");
       const res = await axios.post(`http://${window.location.hostname}:8000/api/fields/${fieldId}/analyze`);
       const jobId = res.data.job_id;
       pollJob(jobId);
     } catch (err) {
       console.error(err);
-      alert("Error starting analysis.");
+      alert("Error analyzing field.");
       setLoading(false);
     }
   };
 
   const pollJob = async (jobId) => {
-    setStatusMsg("Analyzing satellite imagery...");
+    setStatusMsg("Checking crop health...");
     const interval = setInterval(async () => {
       try {
         const res = await axios.get(`http://${window.location.hostname}:8000/api/jobs/${jobId}`);
@@ -134,7 +134,7 @@ function App() {
           setLoading(false);
         } else if (res.data.status === "failed") {
           clearInterval(interval);
-          alert("Analysis failed: " + res.data.error);
+          alert("Analysis failed. Please try again.");
           setLoading(false);
         }
       } catch (err) {
@@ -155,80 +155,78 @@ function App() {
   }
 
   return (
-    <div className="flex flex-col h-screen">
-      <header className="bg-green-800/95 backdrop-blur-md text-white p-4 shadow-md z-20 flex justify-between items-center sticky top-0 border-b border-green-700">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-white/10 rounded-lg flex items-center justify-center border border-white/20">
-            <svg className="w-5 h-5 text-green-100" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-            </svg>
-          </div>
-          <span className="text-xl font-bold tracking-tight text-white">TerraSynapse</span>
-        </div>
-        {loading && (
-          <div className="flex items-center gap-2 bg-green-900/50 px-3 py-1.5 rounded-full border border-green-700/50">
-            <div className="w-4 h-4 border-2 border-green-200 border-t-transparent rounded-full animate-spin"></div>
-            <span className="text-sm font-medium text-green-100">{statusMsg}</span>
-          </div>
-        )}
-      </header>
+    <div className="flex flex-col h-screen w-full relative bg-gray-50 overflow-hidden">
       
-      <main className="flex-1 flex flex-col md:flex-row overflow-hidden bg-white">
-        
-        {/* Sidebar Controls - Separated from Map */}
-        <div className={`${showMapMobile ? 'hidden md:block' : 'block'} w-full md:w-96 bg-gray-50 border-r border-gray-200 p-4 space-y-4 overflow-y-auto flex-shrink-0 z-10 shadow-lg md:shadow-none`}>
-          {locationError && (
-            <button onClick={fetchLocation} className="w-full bg-red-50 text-red-600 p-3 rounded-lg font-bold border border-red-200 hover:bg-red-100 transition-all flex items-center justify-center gap-2">
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
-              Enable Location / Retry
-            </button>
-          )}
-          
-          <button onClick={() => setShowMapMobile(true)} className="md:hidden w-full bg-green-700 hover:bg-green-800 text-white font-bold p-3 rounded-lg shadow-md transition-all">
-            Open Map Fullscreen
-          </button>
-
-          <SearchBar onSelect={handleSearchSelect} />
-          <FileUpload onGeojsonUpload={handleGeojsonUpload} onZipUpload={handleZipUpload} />
+      {/* Top App Bar */}
+      <header className="bg-green-800 text-white p-4 shadow-md z-30 flex justify-between items-center absolute top-0 w-full h-16">
+        <div className="flex items-center gap-3">
+          <span className="text-xl font-bold tracking-tight">TerraSynapse</span>
         </div>
+        <button 
+          onClick={() => setShowMenu(!showMenu)} 
+          className="p-2 bg-green-700 rounded-full hover:bg-green-600 active:scale-95 transition-all"
+        >
+          {showMenu ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+        </button>
+      </header>
 
-        {/* Map Area */}
-        <div className={`${showMapMobile ? 'block' : 'hidden md:block'} flex-1 relative min-h-[50vh]`}>
-          {loading && (
-            <div className="absolute inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
-              <div className="bg-white p-6 rounded shadow-lg text-center">
-                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-green-700 mx-auto mb-4"></div>
-                <p className="font-bold text-gray-800">{statusMsg}</p>
-              </div>
-            </div>
-          )}
+      {/* Slide-over Menu for Advanced/Search features */}
+      <div className={`absolute top-0 right-0 w-full md:w-96 h-full bg-white z-20 shadow-2xl transition-transform duration-300 ease-in-out transform pt-16 ${showMenu ? 'translate-x-0' : 'translate-x-full'}`}>
+        <div className="p-4 space-y-6 overflow-y-auto h-full pb-24">
+          <h2 className="text-xl font-bold text-gray-800 mb-2">Find a Location</h2>
           
-          <MapComponent center={center} zoom={zoom} userLocation={userLocation} onPolygonSubmit={handlePolygonSubmit} />
-          
-          {/* Mobile Back Button */}
-          {showMapMobile && (
-            <button onClick={() => setShowMapMobile(false)} className="md:hidden absolute top-4 left-4 z-20 bg-white px-4 py-2 rounded-full shadow-lg font-bold text-gray-700 border border-gray-100 flex items-center gap-1">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
-              Menu
-            </button>
-          )}
-
-          {/* Fetch Location Button */}
           <button 
              onClick={fetchLocation}
-             className={`absolute ${showMapMobile ? 'top-20' : 'top-4'} left-4 md:top-4 md:left-4 z-10 bg-white p-3 rounded-full shadow-lg ${locationError ? 'text-red-500 hover:bg-red-50' : 'text-blue-600 hover:bg-blue-50'} border border-gray-100 transition-all hover:scale-105 active:scale-95`}
-             title="Find My Location"
+             className="w-full bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-xl font-bold shadow-md flex items-center justify-center gap-3 transition-all active:scale-95 text-lg"
           >
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M12 2v2M12 20v2M2 12h2M20 12h2" />
               <circle cx="12" cy="12" r="6" />
             </svg>
+            Use My Current Location
           </button>
+          
+          {locationError && (
+            <p className="text-red-500 text-sm font-bold text-center">Please enable GPS/Location services on your phone.</p>
+          )}
+
+          <div className="text-center text-gray-400 font-bold">OR</div>
+          
+          <SearchBar onSelect={handleSearchSelect} />
+          
+          <hr className="my-6 border-gray-200" />
+          
+          {/* File Upload is now visually de-prioritized as an "Advanced" option */}
+          <details className="group">
+            <summary className="font-bold text-gray-600 cursor-pointer list-none flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-200">
+              Advanced: Upload File
+              <span className="transition group-open:rotate-180">
+                <svg fill="none" height="24" shapeRendering="geometricPrecision" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" viewBox="0 0 24 24" width="24"><path d="M6 9l6 6 6-6"></path></svg>
+              </span>
+            </summary>
+            <div className="mt-4">
+              <FileUpload onGeojsonUpload={handleGeojsonUpload} onZipUpload={handleZipUpload} />
+            </div>
+          </details>
         </div>
+      </div>
+      
+      {/* Main Map Area */}
+      <main className="flex-1 w-full h-full relative pt-16">
+        {loading && (
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center">
+            <div className="bg-white p-8 rounded-2xl shadow-2xl text-center max-w-sm w-11/12">
+              <div className="animate-spin rounded-full h-16 w-16 border-4 border-green-200 border-t-green-700 mx-auto mb-6"></div>
+              <p className="text-xl font-bold text-gray-800">{statusMsg}</p>
+              <p className="text-gray-500 mt-2 text-sm">Please wait a moment...</p>
+            </div>
+          </div>
+        )}
+        
+        <MapComponent center={center} zoom={zoom} userLocation={userLocation} onPolygonSubmit={handlePolygonSubmit} />
       </main>
     </div>
   );
 }
 
 export default App;
-
