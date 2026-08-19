@@ -40,9 +40,9 @@ function App() {
     }
   };
 
-  useEffect(() => {
-    fetchLocation();
-  }, []);
+  // Location is now ONLY fetched when the user explicitly clicks a button,
+  // preventing immediate errors or unwanted permission popups on load.
+
 
   const handleSearchSelect = (lon, lat) => {
     setCenter([lon, lat]);
