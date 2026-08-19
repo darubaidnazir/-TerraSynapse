@@ -169,8 +169,8 @@ export default function MapComponent({center, zoom, userLocation, onPolygonSubmi
         const accuracy = position.coords.accuracy;
         setCurrentAccuracy(accuracy);
         
-        // Only accept points with high accuracy (less than 20 meters)
-        if (accuracy > 20) {
+        // Only accept points with high accuracy (less than 10 meters)
+        if (accuracy > 10) {
           setGpsWarning(`Low GPS precision. Please wait...`);
           return;
         }
