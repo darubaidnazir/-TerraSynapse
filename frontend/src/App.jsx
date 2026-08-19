@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import axios from "axios";
 import MapComponent from "./MapComponent";
 import SearchBar from "./SearchBar";
@@ -13,6 +13,36 @@ function App() {
   
   const [currentField, setCurrentField] = useState(null);
   const [analysisResult, setAnalysisResult] = useState(null);
+  const [userLocation, setUserLocation] = useState(null);
+  const [showMapMobile, setShowMapMobile] = useState(false);
+  const [locationError, setLocationError] = useState(false);
+
+  const fetchLocation = () => {
+    setLocationError(false);
+    if ("geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const coords = [position.coords.longitude, position.coords.latitude];
+          setCenter(coords);
+          setZoom(18); // Zoom in closely to their location
+          setUserLocation(coords);
+          setShowMapMobile(true); // Auto-open map if location fetched successfully
+        },
+        (error) => {
+          console.warn("Geolocation error or denied:", error);
+          setLocationError(true);
+        },
+        { enableHighAccuracy: true }
+      );
+    } else {
+      setLocationError(true);
+      alert("Geolocation is not supported by your browser.");
+    }
+  };
+
+  useEffect(() => {
+    fetchLocation();
+  }, []);
 
   const handleSearchSelect = (lon, lat) => {
     setCenter([lon, lat]);
@@ -33,7 +63,7 @@ function App() {
       
       if (plantingDate) payload.planting_date = plantingDate;
 
-      const res = await axios.post("http://localhost:8000/api/fields", payload);
+      const res = await axios.post(`http://${window.location.hostname}:8000/api/fields`, payload);
       
       const fieldData = res.data;
       setCurrentField(fieldData);
@@ -68,7 +98,7 @@ function App() {
       if (overrides.override_cec) formData.append("override_cec", overrides.override_cec);
       if (overrides.override_n_proxy) formData.append("override_n_proxy", overrides.override_n_proxy);
       
-      const res = await axios.post("http://localhost:8000/api/fields/upload", formData);
+      const res = await axios.post(`http://${window.location.hostname}:8000/api/fields/upload`, formData);
       const fieldData = res.data;
       setCurrentField(fieldData);
       
@@ -83,7 +113,7 @@ function App() {
   const startAnalysis = async (fieldId) => {
     try {
       setStatusMsg("Starting GEE analysis...");
-      const res = await axios.post(`http://localhost:8000/api/fields/${fieldId}/analyze`);
+      const res = await axios.post(`http://${window.location.hostname}:8000/api/fields/${fieldId}/analyze`);
       const jobId = res.data.job_id;
       pollJob(jobId);
     } catch (err) {
@@ -97,7 +127,7 @@ function App() {
     setStatusMsg("Analyzing satellite imagery...");
     const interval = setInterval(async () => {
       try {
-        const res = await axios.get(`http://localhost:8000/api/jobs/${jobId}`);
+        const res = await axios.get(`http://${window.location.hostname}:8000/api/jobs/${jobId}`);
         if (res.data.status === "done") {
           clearInterval(interval);
           setAnalysisResult(res.data.result);
@@ -143,21 +173,57 @@ function App() {
         )}
       </header>
       
-      <main className="flex-1 relative">
-        {loading && (
-          <div className="absolute inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
-            <div className="bg-white p-6 rounded shadow-lg text-center">
-              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-green-700 mx-auto mb-4"></div>
-              <p className="font-bold text-gray-800">{statusMsg}</p>
-            </div>
-          </div>
-        )}
+      <main className="flex-1 flex flex-col md:flex-row overflow-hidden bg-white">
         
-        <MapComponent center={center} zoom={zoom} onPolygonSubmit={handlePolygonSubmit} />
-        
-        <div className="absolute top-4 left-4 z-10 w-80 space-y-4 pointer-events-auto">
+        {/* Sidebar Controls - Separated from Map */}
+        <div className={`${showMapMobile ? 'hidden md:block' : 'block'} w-full md:w-96 bg-gray-50 border-r border-gray-200 p-4 space-y-4 overflow-y-auto flex-shrink-0 z-10 shadow-lg md:shadow-none`}>
+          {locationError && (
+            <button onClick={fetchLocation} className="w-full bg-red-50 text-red-600 p-3 rounded-lg font-bold border border-red-200 hover:bg-red-100 transition-all flex items-center justify-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+              Enable Location / Retry
+            </button>
+          )}
+          
+          <button onClick={() => setShowMapMobile(true)} className="md:hidden w-full bg-green-700 hover:bg-green-800 text-white font-bold p-3 rounded-lg shadow-md transition-all">
+            Open Map Fullscreen
+          </button>
+
           <SearchBar onSelect={handleSearchSelect} />
           <FileUpload onGeojsonUpload={handleGeojsonUpload} onZipUpload={handleZipUpload} />
+        </div>
+
+        {/* Map Area */}
+        <div className={`${showMapMobile ? 'block' : 'hidden md:block'} flex-1 relative min-h-[50vh]`}>
+          {loading && (
+            <div className="absolute inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+              <div className="bg-white p-6 rounded shadow-lg text-center">
+                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-green-700 mx-auto mb-4"></div>
+                <p className="font-bold text-gray-800">{statusMsg}</p>
+              </div>
+            </div>
+          )}
+          
+          <MapComponent center={center} zoom={zoom} userLocation={userLocation} onPolygonSubmit={handlePolygonSubmit} />
+          
+          {/* Mobile Back Button */}
+          {showMapMobile && (
+            <button onClick={() => setShowMapMobile(false)} className="md:hidden absolute top-4 left-4 z-20 bg-white px-4 py-2 rounded-full shadow-lg font-bold text-gray-700 border border-gray-100 flex items-center gap-1">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+              Menu
+            </button>
+          )}
+
+          {/* Fetch Location Button */}
+          <button 
+             onClick={fetchLocation}
+             className={`absolute ${showMapMobile ? 'top-20' : 'top-4'} left-4 md:top-4 md:left-4 z-10 bg-white p-3 rounded-full shadow-lg ${locationError ? 'text-red-500 hover:bg-red-50' : 'text-blue-600 hover:bg-blue-50'} border border-gray-100 transition-all hover:scale-105 active:scale-95`}
+             title="Find My Location"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 2v2M12 20v2M2 12h2M20 12h2" />
+              <circle cx="12" cy="12" r="6" />
+            </svg>
+          </button>
         </div>
       </main>
     </div>

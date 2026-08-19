@@ -6,14 +6,42 @@ import "@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css";
 import * as turf from "@turf/turf";
 import { theme as drawTheme } from './drawTheme';
 
-export default function MapComponent({center, zoom, onPolygonSubmit}) {
+export default function MapComponent({center, zoom, userLocation, onPolygonSubmit}) {
   const mapContainer = useRef(null);
   const map = useRef(null);
   const draw = useRef(null);
+  const markerRef = useRef(null);
   const [error, setError] = useState(null);
   const [activeFeature, setActiveFeature] = useState(null);
   const [cropType, setCropType] = useState("default");
   const [plantingDate, setPlantingDate] = useState("");
+
+  const [isWalking, setIsWalking] = useState(false);
+  const [walkPath, setWalkPath] = useState([]);
+  const [gpsWarning, setGpsWarning] = useState(null);
+  const watchIdRef = useRef(null);
+
+  const validateAndSet = (e) => {
+    setError(null);
+    if (!draw.current) return;
+    const data = draw.current.getAll();
+    if (data.features.length > 1) {
+      draw.current.delete(data.features[0].id); // Keep only one
+    }
+    if (data.features.length === 0) return;
+    
+    const feature = data.features[data.features.length - 1];
+    const area = turf.area(feature); // in sq meters
+    const areaHa = area / 10000;
+    
+    if (areaHa < 0.01) {
+      setError("Area is too small ( < 100 mq )");
+    } else if (areaHa > 5000) {
+      setError("Area is too large (> 5000 ha)");
+    } else {
+      setActiveFeature(feature);
+    }
+  };
 
   useEffect(() => {
     if (map.current) return;
@@ -66,25 +94,6 @@ export default function MapComponent({center, zoom, onPolygonSubmit}) {
       console.error("Map initialization failed", err);
       setError("Failed to load map.");
     }
-
-    function validateAndSet(e) {
-      setError(null);
-      const data = draw.current.getAll();
-      if (data.features.length > 1) {
-        draw.current.delete(data.features[0].id); // Keep only one
-      }
-      const feature = data.features[data.features.length - 1];
-      
-      const area = turf.area(feature); // in sq meters
-      const areaHa = area / 10000;
-      if (areaHa < 0.01) {
-        setError("Area is too small ( < 100 mq )");
-      } else if (areaHa > 5000) {
-        setError("Area is too large (> 5000 ha)");
-      } else {
-        setActiveFeature(feature);
-      }
-    }
   }, []);
 
   useEffect(() => {
@@ -97,6 +106,108 @@ export default function MapComponent({center, zoom, onPolygonSubmit}) {
     }
   }, [center, zoom]);
 
+  useEffect(() => {
+    if (map.current && userLocation) {
+      if (!markerRef.current) {
+        markerRef.current = new maplibregl.Marker({ color: "#FF0000" })
+          .setLngLat(userLocation)
+          .addTo(map.current);
+      } else {
+        markerRef.current.setLngLat(userLocation);
+      }
+    }
+  }, [userLocation]);
+
+  useEffect(() => {
+    if (!map.current) return;
+    
+    const updateWalkPathLayer = () => {
+      if (!map.current.getSource('walk-path')) {
+        map.current.addSource('walk-path', {
+          type: 'geojson',
+          data: { type: 'Feature', geometry: { type: 'LineString', coordinates: walkPath } }
+        });
+        map.current.addLayer({
+          id: 'walk-path-layer',
+          type: 'line',
+          source: 'walk-path',
+          layout: { 'line-join': 'round', 'line-cap': 'round' },
+          paint: { 'line-color': '#3b82f6', 'line-width': 4 } // Blue line
+        });
+      } else {
+        map.current.getSource('walk-path').setData({
+          type: 'Feature', geometry: { type: 'LineString', coordinates: walkPath }
+        });
+      }
+    };
+
+    if (map.current.isStyleLoaded()) {
+       updateWalkPathLayer();
+    } else {
+       map.current.on('load', updateWalkPathLayer);
+    }
+  }, [walkPath]);
+
+  const startWalking = () => {
+    if (!("geolocation" in navigator)) return alert("Geolocation not supported");
+    
+    setWalkPath([]);
+    setIsWalking(true);
+    setError(null);
+    setGpsWarning("Waiting for initial GPS lock...");
+    
+    watchIdRef.current = navigator.geolocation.watchPosition(
+      (position) => {
+        const accuracy = position.coords.accuracy;
+        
+        // Only accept points with high accuracy (less than 20 meters)
+        if (accuracy > 20) {
+          setGpsWarning(`Low GPS precision (${Math.round(accuracy)}m). Please wait...`);
+          return;
+        }
+        
+        setGpsWarning(null); // Clear warning on good fix
+        const coords = [position.coords.longitude, position.coords.latitude];
+        
+        setWalkPath(prev => {
+          if (prev.length > 0 && prev[prev.length-1][0] === coords[0] && prev[prev.length-1][1] === coords[1]) return prev;
+          return [...prev, coords];
+        });
+      },
+      (error) => {
+        console.warn("Watch position error:", error);
+        setGpsWarning("GPS Signal Lost.");
+      },
+      { enableHighAccuracy: true, maximumAge: 0 }
+    );
+  };
+
+  const stopWalking = () => {
+    if (watchIdRef.current) {
+      navigator.geolocation.clearWatch(watchIdRef.current);
+      watchIdRef.current = null;
+    }
+    setIsWalking(false);
+    
+    if (walkPath.length > 2) {
+      const closedPath = [...walkPath, walkPath[0]];
+      const feature = {
+        type: 'Feature',
+        properties: {},
+        geometry: { type: 'Polygon', coordinates: [closedPath] }
+      };
+      
+      draw.current.deleteAll(); // clear existing
+      draw.current.add(feature);
+      
+      validateAndSet();
+      setWalkPath([]); // Hide the blue line once polygon is drawn
+    } else {
+      setError("Not enough movement recorded to create a boundary.");
+      setWalkPath([]);
+    }
+  };
+
   const handleSubmit = () => {
     if (activeFeature && !error) {
       onPolygonSubmit(activeFeature, cropType, plantingDate);
@@ -106,13 +217,38 @@ export default function MapComponent({center, zoom, onPolygonSubmit}) {
   return (
     <div className="w-full h-full absolute inset-0">
       <div ref={mapContainer} className="w-full h-full" />
-      <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 z-10 w-96">
-        <div className="bg-white/90 backdrop-blur-md p-4 rounded-xl shadow-xl border border-gray-100 flex flex-col items-center gap-3 w-full">
-          <div className="flex items-center gap-2 w-full">
+      <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 z-10 w-[calc(100%-2rem)] max-w-lg flex flex-col gap-3">
+        
+        <div className="flex flex-col items-center w-full pointer-events-auto gap-2">
+           <button 
+             onClick={isWalking ? stopWalking : startWalking}
+             className={`px-5 py-2.5 rounded-full font-bold text-white shadow-lg flex items-center gap-2 transition-all ${isWalking ? 'bg-red-500 hover:bg-red-600 animate-pulse' : 'bg-blue-600 hover:bg-blue-700'}`}
+           >
+             {isWalking ? (
+               <>
+                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="6" y="6" width="12" height="12" rx="2" ry="2"></rect></svg>
+                 Stop Walking ({walkPath.length} points)
+               </>
+             ) : (
+               <>
+                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"></path><path d="M14 8a4 4 0 0 0-4 4v9a1 1 0 0 0 2 0v-4h2v4a1 1 0 0 0 2 0v-6"></path><path d="M10 11H8"></path><path d="M16 11h2"></path></svg>
+                 Walk Boundary
+               </>
+             )}
+           </button>
+           {isWalking && gpsWarning && (
+             <div className="bg-yellow-100 text-yellow-800 text-xs font-bold px-3 py-1.5 rounded-full shadow border border-yellow-300">
+               ⚠️ {gpsWarning}
+             </div>
+           )}
+        </div>
+
+        <div className="bg-white/95 backdrop-blur-md p-3 md:p-4 rounded-xl shadow-xl border border-gray-100 flex flex-col items-center gap-3 w-full pointer-events-auto">
+          <div className="flex flex-col sm:flex-row items-center gap-2 w-full">
             <select 
               value={cropType} 
               onChange={e => setCropType(e.target.value)}
-              className="bg-white border border-gray-200 text-gray-800 text-sm font-medium rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 block w-1/3 p-2.5 outline-none transition-all shadow-sm cursor-pointer"
+              className="bg-white border border-gray-200 text-gray-800 text-sm font-medium rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 block w-full sm:w-1/3 p-2.5 outline-none transition-all shadow-sm cursor-pointer"
             >
               <option value="default">Generic Crop</option>
               <option value="Wheat">Wheat</option>
@@ -123,14 +259,14 @@ export default function MapComponent({center, zoom, onPolygonSubmit}) {
               type="date"
               value={plantingDate}
               onChange={e => setPlantingDate(e.target.value)}
-              className="bg-white border border-gray-200 text-gray-800 text-sm font-medium rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 block w-1/3 p-2.5 outline-none transition-all shadow-sm cursor-pointer"
+              className="bg-white border border-gray-200 text-gray-800 text-sm font-medium rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 block w-full sm:w-1/3 p-2.5 outline-none transition-all shadow-sm cursor-pointer"
               title="Planting Date (Optional)"
             />
 
             <button 
               onClick={handleSubmit}
               disabled={!activeFeature || error}
-              className={`${!activeFeature || error ? "bg-gray-300 text-gray-500 cursor-not-allowed" : "bg-green-600 hover:bg-green-700 text-white shadow-md active:scale-95"} px-4 py-2.5 rounded-lg font-bold text-sm transition-all whitespace-nowrap w-1/3`}
+              className={`${!activeFeature || error ? "bg-gray-300 text-gray-500 cursor-not-allowed" : "bg-green-600 hover:bg-green-700 text-white shadow-md active:scale-95"} px-4 py-2.5 rounded-lg font-bold text-sm transition-all whitespace-nowrap w-full sm:w-1/3`}
             >
               Save Field
             </button>
