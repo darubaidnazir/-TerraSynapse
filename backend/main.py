@@ -40,7 +40,12 @@ def create_field(field_in: FieldCreate, db: Session = Depends(get_db)):
         owner_id=field_in.owner_id,
         geometry=f"SRID=4326;{geo_info['wkt']}",
         area_ha=geo_info["area_ha"],
-        crop_type=field_in.crop_type
+        crop_type=field_in.crop_type,
+        planting_date=field_in.planting_date,
+        override_ph=field_in.override_ph,
+        override_organic_carbon=field_in.override_organic_carbon,
+        override_cec=field_in.override_cec,
+        override_n_proxy=field_in.override_n_proxy
     )
     db.add(db_field)
     db.commit()
@@ -53,7 +58,18 @@ def create_field(field_in: FieldCreate, db: Session = Depends(get_db)):
     }
 
 @app.post("/api/fields/upload", response_model=FieldResponse)
-async def upload_field(file: UploadFile = File(...), name: str = Form(None), owner_id: str = Form(None), crop_type: str = Form("default"), db: Session = Depends(get_db)):
+async def upload_field(
+    file: UploadFile = File(...), 
+    name: str = Form(None), 
+    owner_id: str = Form(None), 
+    crop_type: str = Form("default"),
+    planting_date: str = Form(None),
+    override_ph: float = Form(None),
+    override_organic_carbon: float = Form(None),
+    override_cec: float = Form(None),
+    override_n_proxy: float = Form(None),
+    db: Session = Depends(get_db)
+):
     if not file.filename.endswith(".zip"):
         raise HTTPException(status_code=400, detail="Only .zip shapefiles are supported.")
         
@@ -92,7 +108,12 @@ async def upload_field(file: UploadFile = File(...), name: str = Form(None), own
         owner_id=owner_id,
         geometry=f"SRID=4326;{geo_info['wkt']}",
         area_ha=geo_info["area_ha"],
-        crop_type=crop_type
+        crop_type=crop_type,
+        planting_date=planting_date,
+        override_ph=override_ph,
+        override_organic_carbon=override_organic_carbon,
+        override_cec=override_cec,
+        override_n_proxy=override_n_proxy
     )
     db.add(db_field)
     db.commit()

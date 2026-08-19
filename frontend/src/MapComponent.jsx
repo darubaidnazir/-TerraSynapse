@@ -12,8 +12,8 @@ export default function MapComponent({center, zoom, onPolygonSubmit}) {
   const draw = useRef(null);
   const [error, setError] = useState(null);
   const [activeFeature, setActiveFeature] = useState(null);
-
   const [cropType, setCropType] = useState("default");
+  const [plantingDate, setPlantingDate] = useState("");
 
   useEffect(() => {
     if (map.current) return;
@@ -99,30 +99,38 @@ export default function MapComponent({center, zoom, onPolygonSubmit}) {
 
   const handleSubmit = () => {
     if (activeFeature && !error) {
-      onPolygonSubmit(activeFeature, cropType);
+      onPolygonSubmit(activeFeature, cropType, plantingDate);
     }
   };
 
   return (
     <div className="w-full h-full absolute inset-0">
       <div ref={mapContainer} className="w-full h-full" />
-      <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 z-10 w-80">
+      <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 z-10 w-96">
         <div className="bg-white/90 backdrop-blur-md p-4 rounded-xl shadow-xl border border-gray-100 flex flex-col items-center gap-3 w-full">
           <div className="flex items-center gap-2 w-full">
             <select 
               value={cropType} 
               onChange={e => setCropType(e.target.value)}
-              className="bg-white border border-gray-200 text-gray-800 text-sm font-medium rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 block w-full p-2.5 outline-none transition-all shadow-sm cursor-pointer"
+              className="bg-white border border-gray-200 text-gray-800 text-sm font-medium rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 block w-1/3 p-2.5 outline-none transition-all shadow-sm cursor-pointer"
             >
               <option value="default">Generic Crop</option>
               <option value="Wheat">Wheat</option>
               <option value="Corn">Corn</option>
             </select>
             
+            <input 
+              type="date"
+              value={plantingDate}
+              onChange={e => setPlantingDate(e.target.value)}
+              className="bg-white border border-gray-200 text-gray-800 text-sm font-medium rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 block w-1/3 p-2.5 outline-none transition-all shadow-sm cursor-pointer"
+              title="Planting Date (Optional)"
+            />
+
             <button 
               onClick={handleSubmit}
               disabled={!activeFeature || error}
-              className={`${!activeFeature || error ? "bg-gray-300 text-gray-500 cursor-not-allowed" : "bg-green-600 hover:bg-green-700 text-white shadow-md active:scale-95"} px-5 py-2.5 rounded-lg font-bold text-sm transition-all whitespace-nowrap`}
+              className={`${!activeFeature || error ? "bg-gray-300 text-gray-500 cursor-not-allowed" : "bg-green-600 hover:bg-green-700 text-white shadow-md active:scale-95"} px-4 py-2.5 rounded-lg font-bold text-sm transition-all whitespace-nowrap w-1/3`}
             >
               Save Field
             </button>

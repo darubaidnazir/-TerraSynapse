@@ -25,10 +25,19 @@ def run_gee_analysis(self, field_id: str):
         geom_shape = to_shape(field.geometry)
         wkt_geom = geom_shape.wkt
         
-        results = extract_indices(wkt_geom)
+        soil_overrides = {
+            "override_ph": field.override_ph,
+            "override_organic_carbon": field.override_organic_carbon,
+            "override_cec": field.override_cec,
+            "override_n_proxy": field.override_n_proxy
+        }
+        
+        results = extract_indices(wkt_geom, soil_overrides)
         
         crop_type = field.crop_type or "default"
-        health_score_pct, breakdown, updated_indices = compute_health_score(results.get("indices", {}), crop_type)
+        planting_date = field.planting_date
+        
+        health_score_pct, breakdown, updated_indices = compute_health_score(results.get("indices", {}), crop_type, planting_date)
         
         recs = generate_recommendations(updated_indices, crop_type, health_score_pct)
         

@@ -19,16 +19,21 @@ function App() {
     setZoom(14);
   };
 
-  const handlePolygonSubmit = async (feature, cropType = "default") => {
+  const handlePolygonSubmit = async (feature, cropType = "default", plantingDate = null, overrides = {}) => {
     try {
       setLoading(true);
       setStatusMsg("Saving field...");
       
-      const res = await axios.post("http://localhost:8000/api/fields", {
+      const payload = {
         name: "My Field",
         geometry: feature.geometry,
-        crop_type: cropType
-      });
+        crop_type: cropType,
+        ...overrides
+      };
+      
+      if (plantingDate) payload.planting_date = plantingDate;
+
+      const res = await axios.post("http://localhost:8000/api/fields", payload);
       
       const fieldData = res.data;
       setCurrentField(fieldData);
@@ -41,17 +46,27 @@ function App() {
     }
   };
 
-  const handleGeojsonUpload = (geojson) => {
-    if (geojson.features && geojson.features.length > 0) { handlePolygonSubmit(geojson.features[0]); } else { alert("Error: No polygons found in the file. Ensure the shapefile/KML contains valid geometries."); }
+  const handleGeojsonUpload = (geojson, overrides = {}) => {
+    if (geojson.features && geojson.features.length > 0) {
+      handlePolygonSubmit(geojson.features[0], overrides.crop_type || "default", overrides.planting_date || null, overrides);
+    } else {
+      alert("Error: No polygons found in the file. Ensure the shapefile/KML contains valid geometries.");
+    }
   };
 
-  const handleZipUpload = async (file) => {
+  const handleZipUpload = async (file, overrides = {}) => {
     try {
       setLoading(true);
       setStatusMsg("Uploading shapefile...");
       const formData = new FormData();
       formData.append("file", file);
       formData.append("name", "Uploaded Field");
+      if (overrides.crop_type) formData.append("crop_type", overrides.crop_type);
+      if (overrides.planting_date) formData.append("planting_date", overrides.planting_date);
+      if (overrides.override_ph) formData.append("override_ph", overrides.override_ph);
+      if (overrides.override_organic_carbon) formData.append("override_organic_carbon", overrides.override_organic_carbon);
+      if (overrides.override_cec) formData.append("override_cec", overrides.override_cec);
+      if (overrides.override_n_proxy) formData.append("override_n_proxy", overrides.override_n_proxy);
       
       const res = await axios.post("http://localhost:8000/api/fields/upload", formData);
       const fieldData = res.data;

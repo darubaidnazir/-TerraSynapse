@@ -14,6 +14,11 @@ class Field(Base):
     geometry = Column(Geography("POLYGON", srid=4326), nullable=False)
     area_ha = Column(Float, nullable=True)
     crop_type = Column(String, nullable=True)
+    planting_date = Column(DateTime(timezone=True), nullable=True)
+    override_ph = Column(Float, nullable=True)
+    override_organic_carbon = Column(Float, nullable=True)
+    override_cec = Column(Float, nullable=True)
+    override_n_proxy = Column(Float, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=text("now()"))
 
 class AnalysisRun(Base):
