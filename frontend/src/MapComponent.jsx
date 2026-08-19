@@ -22,6 +22,8 @@ export default function MapComponent({center, zoom, userLocation, onPolygonSubmi
   const [currentAccuracy, setCurrentAccuracy] = useState(null);
   const watchIdRef = useRef(null);
 
+  const [isDrawing, setIsDrawing] = useState(false);
+
   const validateAndSet = (e) => {
     setError(null);
     if (!draw.current) return;
@@ -29,7 +31,10 @@ export default function MapComponent({center, zoom, userLocation, onPolygonSubmi
     if (data.features.length > 1) {
       draw.current.delete(data.features[0].id); // Keep only one
     }
-    if (data.features.length === 0) return;
+    if (data.features.length === 0) {
+      setActiveFeature(null);
+      return;
+    }
     
     const feature = data.features[data.features.length - 1];
     const area = turf.area(feature); // in sq meters
@@ -79,17 +84,18 @@ export default function MapComponent({center, zoom, userLocation, onPolygonSubmi
 
       draw.current = new MapboxDraw({
         styles: drawTheme,
-        displayControlsDefault: false,
-        controls: {
-          polygon: true,
-          trash: true
-        }
+        displayControlsDefault: false
       });
+      // We no longer add the tiny default controls to the map UI
       map.current.addControl(draw.current, "top-right");
+      // Wait, we DO need to add the control object to the map for it to work, 
+      // but we removed the visible buttons by setting displayControlsDefault: false and controls: {}
+      // Let's actually remove the visual CSS by just not passing controls.
 
       map.current.on("draw.create", validateAndSet);
       map.current.on("draw.update", validateAndSet);
       map.current.on("draw.delete", () => setActiveFeature(null));
+      map.current.on("draw.modechange", (e) => setIsDrawing(e.mode === 'draw_polygon'));
 
     } catch (err) {
       console.error("Map initialization failed", err);
@@ -213,6 +219,25 @@ export default function MapComponent({center, zoom, userLocation, onPolygonSubmi
     }
   };
 
+  const startDrawing = () => {
+    if (draw.current) {
+      draw.current.changeMode('draw_polygon');
+    }
+  };
+
+  const cancelDrawing = () => {
+    if (draw.current) {
+      draw.current.changeMode('simple_select');
+    }
+  };
+
+  const clearDrawing = () => {
+    if (draw.current) {
+      draw.current.deleteAll();
+      validateAndSet();
+    }
+  };
+
   const handleSubmit = () => {
     if (activeFeature && !error) {
       onPolygonSubmit(activeFeature, cropType, plantingDate);
@@ -245,26 +270,42 @@ export default function MapComponent({center, zoom, userLocation, onPolygonSubmi
         
         <div className="flex flex-col items-center w-full pointer-events-auto gap-2">
            {isWalking && renderGpsSignal()}
-           <button 
-             onClick={isWalking ? stopWalking : startWalking}
-             className={`px-5 py-2.5 rounded-full font-bold text-white shadow-lg flex items-center gap-2 transition-all ${isWalking ? 'bg-red-500 hover:bg-red-600 animate-pulse' : 'bg-blue-600 hover:bg-blue-700'}`}
-           >
-             {isWalking ? (
-               <>
-                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="6" y="6" width="12" height="12" rx="2" ry="2"></rect></svg>
-                 Stop Walking ({walkPath.length} points)
-               </>
-             ) : (
-               <>
-                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"></path><path d="M14 8a4 4 0 0 0-4 4v9a1 1 0 0 0 2 0v-4h2v4a1 1 0 0 0 2 0v-6"></path><path d="M10 11H8"></path><path d="M16 11h2"></path></svg>
-                 Walk Boundary
-               </>
-             )}
-           </button>
+           <div className="flex w-full gap-2 px-1">
+             <button 
+               onClick={isWalking ? stopWalking : startWalking}
+               className={`py-3 rounded-xl font-bold text-white shadow-lg flex-1 flex justify-center items-center gap-2 transition-all ${isWalking ? 'bg-red-500 hover:bg-red-600 animate-pulse' : 'bg-blue-600 hover:bg-blue-700'}`}
+             >
+               {isWalking ? (
+                 <>
+                   <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="6" y="6" width="12" height="12" rx="2" ry="2"></rect></svg>
+                   Stop Walking ({walkPath.length})
+                 </>
+               ) : (
+                 <>
+                   <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"></path><path d="M14 8a4 4 0 0 0-4 4v9a1 1 0 0 0 2 0v-4h2v4a1 1 0 0 0 2 0v-6"></path><path d="M10 11H8"></path><path d="M16 11h2"></path></svg>
+                   Walk Boundary
+                 </>
+               )}
+             </button>
+
+             <button 
+               onClick={isDrawing ? cancelDrawing : startDrawing}
+               className={`py-3 rounded-xl font-bold text-white shadow-lg flex-1 flex justify-center items-center gap-2 transition-all ${isDrawing ? 'bg-red-500 hover:bg-red-600 animate-pulse' : 'bg-orange-500 hover:bg-orange-600'}`}
+             >
+               {isDrawing ? "Tap map to draw..." : "Draw Manually"}
+             </button>
+           </div>
+           
            {isWalking && gpsWarning && (
              <div className="bg-yellow-100 text-yellow-800 text-xs font-bold px-3 py-1.5 rounded-full shadow border border-yellow-300">
                ⚠️ {gpsWarning}
              </div>
+           )}
+
+           {activeFeature && (
+             <button onClick={clearDrawing} className="bg-white text-red-500 px-4 py-1.5 rounded-full text-xs font-bold shadow hover:bg-red-50 transition-all border border-red-100">
+               🗑️ Clear Current Field
+             </button>
            )}
         </div>
 
