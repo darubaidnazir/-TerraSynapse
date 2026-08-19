@@ -222,12 +222,14 @@ export default function MapComponent({center, zoom, userLocation, onPolygonSubmi
   const startDrawing = () => {
     if (draw.current) {
       draw.current.changeMode('draw_polygon');
+      setIsDrawing(true);
     }
   };
 
   const cancelDrawing = () => {
     if (draw.current) {
       draw.current.changeMode('simple_select');
+      setIsDrawing(false);
     }
   };
 
