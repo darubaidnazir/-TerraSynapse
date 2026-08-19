@@ -19,6 +19,7 @@ export default function MapComponent({center, zoom, userLocation, onPolygonSubmi
   const [isWalking, setIsWalking] = useState(false);
   const [walkPath, setWalkPath] = useState([]);
   const [gpsWarning, setGpsWarning] = useState(null);
+  const [currentAccuracy, setCurrentAccuracy] = useState(null);
   const watchIdRef = useRef(null);
 
   const validateAndSet = (e) => {
@@ -155,14 +156,16 @@ export default function MapComponent({center, zoom, userLocation, onPolygonSubmi
     setIsWalking(true);
     setError(null);
     setGpsWarning("Waiting for initial GPS lock...");
+    setCurrentAccuracy(null);
     
     watchIdRef.current = navigator.geolocation.watchPosition(
       (position) => {
         const accuracy = position.coords.accuracy;
+        setCurrentAccuracy(accuracy);
         
         // Only accept points with high accuracy (less than 20 meters)
         if (accuracy > 20) {
-          setGpsWarning(`Low GPS precision (${Math.round(accuracy)}m). Please wait...`);
+          setGpsWarning(`Low GPS precision. Please wait...`);
           return;
         }
         
@@ -177,6 +180,7 @@ export default function MapComponent({center, zoom, userLocation, onPolygonSubmi
       (error) => {
         console.warn("Watch position error:", error);
         setGpsWarning("GPS Signal Lost.");
+        setCurrentAccuracy(null);
       },
       { enableHighAccuracy: true, maximumAge: 0 }
     );
@@ -188,6 +192,7 @@ export default function MapComponent({center, zoom, userLocation, onPolygonSubmi
       watchIdRef.current = null;
     }
     setIsWalking(false);
+    setCurrentAccuracy(null);
     
     if (walkPath.length > 2) {
       const closedPath = [...walkPath, walkPath[0]];
@@ -214,12 +219,32 @@ export default function MapComponent({center, zoom, userLocation, onPolygonSubmi
     }
   };
 
+  const renderGpsSignal = () => {
+    if (currentAccuracy === null) return null;
+    let bars = 0;
+    if (currentAccuracy <= 5) bars = 3;
+    else if (currentAccuracy <= 10) bars = 2;
+    else if (currentAccuracy <= 20) bars = 1;
+
+    return (
+      <div className="flex items-center gap-2 bg-white/95 border border-gray-200 backdrop-blur px-4 py-2 rounded-full shadow-sm text-sm font-bold text-gray-700">
+        <div className="flex items-end gap-1 h-4">
+          <div className={`w-1.5 rounded-sm ${bars >= 1 ? (bars === 1 ? 'bg-yellow-500' : 'bg-green-500') : 'bg-gray-300'} h-2`} />
+          <div className={`w-1.5 rounded-sm ${bars >= 2 ? 'bg-green-500 h-3' : 'bg-gray-300 h-3'}`} />
+          <div className={`w-1.5 rounded-sm ${bars >= 3 ? 'bg-green-500 h-full' : 'bg-gray-300 h-full'}`} />
+        </div>
+        <span>{Math.round(currentAccuracy)}m Accuracy</span>
+      </div>
+    );
+  };
+
   return (
     <div className="w-full h-full absolute inset-0">
       <div ref={mapContainer} className="w-full h-full" />
       <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 z-10 w-[calc(100%-2rem)] max-w-lg flex flex-col gap-3">
         
         <div className="flex flex-col items-center w-full pointer-events-auto gap-2">
+           {isWalking && renderGpsSignal()}
            <button 
              onClick={isWalking ? stopWalking : startWalking}
              className={`px-5 py-2.5 rounded-full font-bold text-white shadow-lg flex items-center gap-2 transition-all ${isWalking ? 'bg-red-500 hover:bg-red-600 animate-pulse' : 'bg-blue-600 hover:bg-blue-700'}`}
