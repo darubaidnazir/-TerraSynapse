@@ -285,6 +285,11 @@ def export_job(job_id: str, format: str = "csv", db: Session = Depends(get_db)):
             pdf.multi_cell(0, 6, desc)
             pdf.ln(2)
             
+        pdf.ln(10)
+        pdf.set_font("helvetica", "I", 10)
+        pdf.set_text_color(128, 128, 128)
+        pdf.cell(0, 10, "Built with <3 by Dar Ubaid Nazir", new_x="LMARGIN", new_y="NEXT", align="C")
+            
         pdf_bytes = bytes(pdf.output())
         return StreamingResponse(
             io.BytesIO(pdf_bytes), 

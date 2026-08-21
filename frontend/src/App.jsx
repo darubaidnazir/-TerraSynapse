@@ -208,6 +208,10 @@ function App() {
               <FileUpload onGeojsonUpload={handleGeojsonUpload} onZipUpload={handleZipUpload} />
             </div>
           </details>
+          
+          <div className="mt-8 text-center text-sm text-gray-400 font-medium">
+            Built with ❤️ by Dar Ubaid Nazir
+          </div>
         </div>
       </div>
       

@@ -161,6 +161,10 @@ export default function Dashboard({ field, result, onReset }) {
             </div>
           </div>
         </details>
+        
+        <div className="mt-8 text-center text-sm text-gray-400 font-medium pb-8">
+          Built with ❤️ by Dar Ubaid Nazir
+        </div>
       </div>
     </div>
   );
