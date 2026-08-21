@@ -248,12 +248,15 @@ def export_job(job_id: str, format: str = "csv", db: Session = Depends(get_db)):
         pdf = FPDF()
         pdf.add_page()
         pdf.set_font("helvetica", "B", 16)
-        pdf.cell(0, 10, f"TerraSynapse Analysis Report: {field.name}", new_x="LMARGIN", new_y="NEXT", align="C")
+        title = f"TerraSynapse Analysis Report: {field.name}".encode('latin-1', 'replace').decode('latin-1')
+        pdf.cell(0, 10, title, new_x="LMARGIN", new_y="NEXT", align="C")
         
         pdf.set_font("helvetica", "", 12)
         pdf.cell(0, 10, f"Date: {run.acquisition_date}", new_x="LMARGIN", new_y="NEXT")
         pdf.cell(0, 10, f"Area: {field.area_ha:.2f} ha", new_x="LMARGIN", new_y="NEXT")
-        pdf.cell(0, 10, f"Overall Health Score: {run.health_score_pct:.1f}%" if run.health_score_pct else "Overall Health Score: N/A", new_x="LMARGIN", new_y="NEXT")
+        
+        health_text = f"Overall Health Score: {run.health_score_pct:.1f}%" if run.health_score_pct else "Overall Health Score: N/A"
+        pdf.cell(0, 10, health_text, new_x="LMARGIN", new_y="NEXT")
         
         pdf.ln(5)
         pdf.set_font("helvetica", "B", 14)
@@ -262,8 +265,11 @@ def export_job(job_id: str, format: str = "csv", db: Session = Depends(get_db)):
         pdf.set_font("helvetica", "", 12)
         for key, data in (run.indices or {}).items():
             if "mean" in data:
+                mean_val = data["mean"]
+                mean_str = f"{mean_val:.3f}" if mean_val is not None else "N/A"
                 label = data.get("label", "N/A")
-                pdf.cell(0, 8, f"- {key.upper()}: {data['mean']:.3f} ({label})", new_x="LMARGIN", new_y="NEXT")
+                text = f"- {key.upper()}: {mean_str} ({label})".encode('latin-1', 'replace').decode('latin-1')
+                pdf.cell(0, 8, text, new_x="LMARGIN", new_y="NEXT")
                 
         pdf.ln(5)
         pdf.set_font("helvetica", "B", 14)
@@ -272,12 +278,14 @@ def export_job(job_id: str, format: str = "csv", db: Session = Depends(get_db)):
         
         for idx, rec in enumerate(run.recommendations or []):
             pdf.set_font("helvetica", "B", 12)
-            pdf.cell(0, 8, f"{idx+1}. {rec.get('title')} [{rec.get('priority').upper()}]", new_x="LMARGIN", new_y="NEXT")
+            title = f"{idx+1}. {rec.get('title')} [{rec.get('priority').upper()}]".encode('latin-1', 'replace').decode('latin-1')
+            pdf.cell(0, 8, title, new_x="LMARGIN", new_y="NEXT")
             pdf.set_font("helvetica", "", 11)
-            pdf.multi_cell(0, 6, rec.get('description'))
+            desc = str(rec.get('description')).encode('latin-1', 'replace').decode('latin-1')
+            pdf.multi_cell(0, 6, desc)
             pdf.ln(2)
             
-        pdf_bytes = pdf.output()
+        pdf_bytes = bytes(pdf.output())
         return StreamingResponse(
             io.BytesIO(pdf_bytes), 
             media_type="application/pdf", 
