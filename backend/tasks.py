@@ -32,12 +32,12 @@ def run_gee_analysis(self, field_id: str):
             "override_n_proxy": field.override_n_proxy
         }
         
-        results = extract_indices(wkt_geom, soil_overrides)
-        
         crop_type = field.crop_type or "default"
         planting_date = field.planting_date
+
+        results = extract_indices(wkt_geom, soil_overrides, planting_date)
         
-        health_score_pct, breakdown, updated_indices = compute_health_score(results.get("indices", {}), crop_type, planting_date)
+        health_score_pct, breakdown, updated_indices = compute_health_score(db, results.get("indices", {}), crop_type, planting_date)
         
         recs = generate_recommendations(updated_indices, crop_type, health_score_pct)
         
@@ -58,5 +58,3 @@ def run_gee_analysis(self, field_id: str):
         raise e
     finally:
         db.close()
-
-

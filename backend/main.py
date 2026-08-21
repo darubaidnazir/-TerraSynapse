@@ -166,34 +166,22 @@ def get_job(job_id: str, db: Session = Depends(get_db)):
             }
         }
     elif run.status == "failed":
-        from tasks import celery_app
-        task_res = celery_app.AsyncResult(job_id)
-        return {"status": "failed", "error": str(task_res.info)}
+        return {"status": "failed", "error": "Analysis failed"}
     else:
         # Check if celery picked it up
         from tasks import celery_app
         task_res = celery_app.AsyncResult(job_id)
-        if task_res.state == "STARTED":
+        if task_res.state == "STARTED" and run.status != "running":
             run.status = "running"
             db.commit()
-        elif task_res.state == "SUCCESS":
-            run.status = "done"
-            # It might lack DB fields if worker skipped it, but we at least unblock
-            db.commit()
-            # Wait, if worker skipped it, the result is in task_res.result!
-            res = task_res.result
-            if res and isinstance(res, dict):
-                run.acquisition_date = res.get("acquisition_date")
-                run.cloud_cover_pct = res.get("cloud_cover_pct")
-                run.indices = res.get("indices")
-                run.health_score_pct = res.get("health_score_pct", 85)
-                run.recommendations = res.get("recommendations", "Analysis complete.")
-                db.commit()
-            
         elif task_res.state == "FAILURE":
-            run.status = "failed"
-            db.commit()
+            if run.status != "failed":
+                run.status = "failed"
+                db.commit()
             return {"status": "failed", "error": str(task_res.info)}
+            
+        # If Celery says SUCCESS but DB isn't updated yet, just keep reporting running
+        # until the worker finishes its DB commit.
         return {"status": run.status}
 
 @app.get("/api/fields/{field_id}/trends")

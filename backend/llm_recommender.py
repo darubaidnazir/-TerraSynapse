@@ -61,23 +61,48 @@ def generate_recommendations(indices: dict, crop_type: str, health_score: float)
         {json.dumps(indices, indent=2)}
         
         Provide 2-3 specific, actionable recommendations for the farmer.
-        Format the output as a raw JSON array of objects with keys: "title", "description", and "priority" (low, medium, high).
-        Do not include markdown blocks or any other text.
         """
+        
+        tools = [
+            {
+                "name": "provide_recommendations",
+                "description": "Provide a list of agronomic recommendations based on the field data.",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "recommendations": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "title": {"type": "string", "description": "Short, actionable title"},
+                                    "description": {"type": "string", "description": "Detailed explanation of what to do and why"},
+                                    "priority": {"type": "string", "enum": ["low", "medium", "high"]}
+                                },
+                                "required": ["title", "description", "priority"]
+                            }
+                        }
+                    },
+                    "required": ["recommendations"]
+                }
+            }
+        ]
         
         response = client.messages.create(
             model="claude-3-haiku-20240307",
             max_tokens=500,
-            system="You only output raw valid JSON arrays.",
+            tools=tools,
+            tool_choice={"type": "tool", "name": "provide_recommendations"},
             messages=[
                 {"role": "user", "content": prompt}
             ]
         )
         
-        content = response.content[0].text
-        content = content.replace("```json", "").replace("```", "").strip()
-        
-        return json.loads(content)
+        for block in response.content:
+            if block.type == "tool_use" and block.name == "provide_recommendations":
+                return block.input.get("recommendations", [])
+                
+        return rule_based_fallback(indices, crop_type, health_score)
     except Exception as e:
         print(f"LLM generation failed: {e}. Falling back to rules.")
         return rule_based_fallback(indices, crop_type, health_score)
