@@ -4,7 +4,7 @@ import MapComponent from "./MapComponent";
 import SearchBar from "./SearchBar";
 import FileUpload from "./FileUpload";
 import Dashboard from "./Dashboard";
-import { Menu, X } from "lucide-react";
+import { Menu, X, MapPin } from "lucide-react";
 
 function App() {
   const [center, setCenter] = useState([0, 0]);
@@ -19,9 +19,18 @@ function App() {
   
   // UI States
   const [showMenu, setShowMenu] = useState(false);
+  
+  // GPS Initial State
+  const [gpsStatus, setGpsStatus] = useState("checking"); // 'checking', 'granted', 'denied'
+  const [gpsErrorMsg, setGpsErrorMsg] = useState("");
 
-  const fetchLocation = () => {
-    setLocationError(false);
+  useEffect(() => {
+    requestLocation();
+  }, []);
+
+  const requestLocation = () => {
+    setGpsStatus("checking");
+    setGpsErrorMsg("");
     if ("geolocation" in navigator) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
@@ -29,18 +38,33 @@ function App() {
           setCenter(coords);
           setZoom(18); // Zoom in closely to their location
           setUserLocation(coords);
+          setGpsStatus("granted");
           setShowMenu(false);
         },
         (error) => {
           console.warn("Geolocation error or denied:", error);
-          setLocationError(true);
+          setGpsStatus("denied");
+          if (error.code === error.PERMISSION_DENIED) {
+            setGpsErrorMsg("Location permission denied. Please allow GPS access to use this website.");
+          } else if (error.code === error.POSITION_UNAVAILABLE) {
+            setGpsErrorMsg("Location information is unavailable. Please turn on your device's GPS and try again.");
+          } else if (error.code === error.TIMEOUT) {
+            setGpsErrorMsg("Location request timed out. Please check your signal and try again.");
+          } else {
+            setGpsErrorMsg("An error occurred while detecting your location.");
+          }
         },
-        { enableHighAccuracy: true }
+        { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
       );
     } else {
-      setLocationError(true);
-      alert("Geolocation is not supported by your phone.");
+      setGpsStatus("denied");
+      setGpsErrorMsg("Geolocation is not supported by your browser.");
     }
+  };
+
+  const fetchLocation = () => {
+    // This can still be used from the menu if needed
+    requestLocation();
   };
 
   const handleSearchSelect = (lon, lat) => {
@@ -146,10 +170,58 @@ function App() {
   const handleReset = () => {
     setCurrentField(null);
     setAnalysisResult(null);
-    setCenter([0, 0]);
-    setZoom(2);
+    // Keep user at current location if possible, rather than resetting to [0,0]
+    if (userLocation) {
+      setCenter(userLocation);
+      setZoom(18);
+    }
   };
 
+  // ----------------------------------------------------
+  // GPS Initial Screens
+  // ----------------------------------------------------
+  if (gpsStatus === "checking") {
+    return (
+      <div className="flex flex-col h-screen w-full bg-green-50 items-center justify-center p-6 text-center">
+        <div className="animate-bounce bg-green-100 p-4 rounded-full mb-6">
+          <MapPin className="w-12 h-12 text-green-700" />
+        </div>
+        <h1 className="text-3xl font-extrabold text-green-900 mb-2">TerraSynapse</h1>
+        <p className="text-lg text-gray-700 mb-8 max-w-md">
+          Detecting your current location...<br/>
+          Please allow GPS access when prompted.
+        </p>
+        <div className="animate-spin rounded-full h-12 w-12 border-4 border-green-200 border-t-green-700"></div>
+      </div>
+    );
+  }
+
+  if (gpsStatus === "denied") {
+    return (
+      <div className="flex flex-col h-screen w-full bg-red-50 items-center justify-center p-6 text-center">
+        <div className="bg-red-100 p-4 rounded-full mb-6">
+          <MapPin className="w-12 h-12 text-red-600" />
+        </div>
+        <h1 className="text-3xl font-extrabold text-red-900 mb-2">Location Required</h1>
+        <p className="text-lg text-red-700 mb-8 max-w-md font-medium">
+          {gpsErrorMsg}
+        </p>
+        <p className="text-md text-gray-600 mb-8 max-w-md">
+          TerraSynapse requires your location to map your fields accurately. Please turn on GPS and allow location access in your browser settings.
+        </p>
+        <button 
+          onClick={requestLocation}
+          className="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-8 rounded-xl shadow-lg transition-transform active:scale-95"
+        >
+          Try Again
+        </button>
+      </div>
+    );
+  }
+
+  // ----------------------------------------------------
+  // Main App (GPS Granted)
+  // ----------------------------------------------------
   if (analysisResult) {
     return <Dashboard field={currentField} result={analysisResult} onReset={handleReset} />;
   }
@@ -179,17 +251,10 @@ function App() {
              onClick={fetchLocation}
              className="w-full bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-xl font-bold shadow-md flex items-center justify-center gap-3 transition-all active:scale-95 text-lg"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 2v2M12 20v2M2 12h2M20 12h2" />
-              <circle cx="12" cy="12" r="6" />
-            </svg>
-            Use My Current Location
+            <MapPin className="w-6 h-6" />
+            Recenter on My Location
           </button>
           
-          {locationError && (
-            <p className="text-red-500 text-sm font-bold text-center">Please enable GPS/Location services on your phone.</p>
-          )}
-
           <div className="text-center text-gray-400 font-bold">OR</div>
           
           <SearchBar onSelect={handleSearchSelect} />
@@ -234,3 +299,4 @@ function App() {
 }
 
 export default App;
+
