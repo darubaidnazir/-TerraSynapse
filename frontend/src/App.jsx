@@ -21,45 +21,44 @@ function App() {
   const [showMenu, setShowMenu] = useState(false);
   
   // GPS Initial State
-  const [gpsStatus, setGpsStatus] = useState("checking"); // 'checking', 'granted', 'denied'
+  const [gpsStatus, setGpsStatus] = useState("prompt"); // 'prompt', 'checking', 'granted', 'denied'
   const [gpsErrorMsg, setGpsErrorMsg] = useState("");
-
-  useEffect(() => {
-    requestLocation();
-  }, []);
 
   const requestLocation = () => {
     setGpsStatus("checking");
     setGpsErrorMsg("");
-    if ("geolocation" in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const coords = [position.coords.longitude, position.coords.latitude];
-          setCenter(coords);
-          setZoom(18); // Zoom in closely to their location
-          setUserLocation(coords);
-          setGpsStatus("granted");
-          setShowMenu(false);
-        },
-        (error) => {
-          console.warn("Geolocation error or denied:", error);
-          setGpsStatus("denied");
-          if (error.code === error.PERMISSION_DENIED) {
-            setGpsErrorMsg("Location permission denied. Please allow GPS access to use this website.");
-          } else if (error.code === error.POSITION_UNAVAILABLE) {
-            setGpsErrorMsg("Location information is unavailable. Please turn on your device's GPS and try again.");
-          } else if (error.code === error.TIMEOUT) {
-            setGpsErrorMsg("Location request timed out. Please check your signal and try again.");
-          } else {
-            setGpsErrorMsg("An error occurred while detecting your location.");
-          }
-        },
-        { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
-      );
-    } else {
+    
+    // Some mobile browsers block geolocation over HTTP (unless localhost)
+    if (!navigator.geolocation) {
       setGpsStatus("denied");
-      setGpsErrorMsg("Geolocation is not supported by your browser.");
+      setGpsErrorMsg("Geolocation is not supported by your browser or is blocked due to an insecure connection (HTTP).");
+      return;
     }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const coords = [position.coords.longitude, position.coords.latitude];
+        setCenter(coords);
+        setZoom(18); // Zoom in closely to their location
+        setUserLocation(coords);
+        setGpsStatus("granted");
+        setShowMenu(false);
+      },
+      (error) => {
+        console.warn("Geolocation error or denied:", error);
+        setGpsStatus("denied");
+        if (error.code === error.PERMISSION_DENIED) {
+          setGpsErrorMsg("Location permission denied. Please allow GPS access in your browser settings and try again.");
+        } else if (error.code === error.POSITION_UNAVAILABLE) {
+          setGpsErrorMsg("Location information is unavailable. Please turn on your device's GPS and try again.");
+        } else if (error.code === error.TIMEOUT) {
+          setGpsErrorMsg("Location request timed out. Please check your signal and try again.");
+        } else {
+          setGpsErrorMsg("An error occurred while detecting your location.");
+        }
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+    );
   };
 
   const fetchLocation = () => {
@@ -180,6 +179,34 @@ function App() {
   // ----------------------------------------------------
   // GPS Initial Screens
   // ----------------------------------------------------
+  if (gpsStatus === "prompt") {
+    return (
+      <div className="flex flex-col h-screen w-full bg-green-50 items-center justify-center p-6 text-center">
+        <div className="bg-green-100 p-4 rounded-full mb-6">
+          <MapPin className="w-12 h-12 text-green-700" />
+        </div>
+        <h1 className="text-4xl font-extrabold text-green-900 mb-4">Welcome to TerraSynapse</h1>
+        <p className="text-lg text-gray-700 mb-8 max-w-md">
+          To provide the best experience and map your fields accurately, we need access to your current location.
+        </p>
+        
+        {!window.isSecureContext && window.location.hostname !== 'localhost' && (
+          <div className="bg-yellow-100 text-yellow-800 p-4 rounded-lg mb-8 max-w-md text-sm text-left font-medium shadow-sm border border-yellow-200">
+            ⚠️ <strong>Note:</strong> You are accessing this site over an insecure connection (HTTP). Mobile browsers often block location access unless the site uses HTTPS. If it fails, try using localhost or an HTTPS tunnel.
+          </div>
+        )}
+
+        <button 
+          onClick={requestLocation}
+          className="bg-green-600 hover:bg-green-700 text-white font-bold py-4 px-10 rounded-full shadow-xl transition-transform active:scale-95 text-xl flex items-center gap-2"
+        >
+          <MapPin className="w-6 h-6" />
+          Allow Location Access
+        </button>
+      </div>
+    );
+  }
+
   if (gpsStatus === "checking") {
     return (
       <div className="flex flex-col h-screen w-full bg-green-50 items-center justify-center p-6 text-center">
